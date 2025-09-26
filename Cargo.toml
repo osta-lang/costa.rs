@@ -1,0 +1,7 @@
+[workspace]
+members = ["osta-lexer"]
+resolver = "3"
+
+[workspace.dependencies]
+osta-lexer = { path = "./osta-lexer" }
+thiserror = "2.0.16"

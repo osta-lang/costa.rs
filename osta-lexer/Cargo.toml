@@ -1,0 +1,12 @@
+[package]
+name = "osta-lexer"
+version = "0.1.0"
+edition = "2024"
+
+[features]
+default = ["unicode-identifiers"]
+unicode-identifiers = []
+
+[dependencies]
+thiserror.workspace = true
+logos = { git = "https://github.com/JohanVonElectrum/logos.git" } # TODO(johan): switch back when #491 is merged

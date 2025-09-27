@@ -40,6 +40,8 @@ pub enum TokenKind {
     Static,
     #[token("pub")]
     Pub,
+    #[token("move")]
+    Move,
     // Data types
     #[token("never")]
     Never,

@@ -115,7 +115,6 @@ mod tests {
                 assert_eq!(lexer.next(), None);
             }
         };
-
         ($name:ident, $input:expr) => {
             #[test]
             fn $name() {

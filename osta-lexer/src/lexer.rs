@@ -48,11 +48,7 @@ impl<'src> Lexer<'src> {
         if let Some(result) = self.queue.pop() {
             Some(result)
         } else if let Some(result) = self.stream.next() {
-            Some(
-                result
-                    .map(|kind| Token::new(kind, self.stream.slice()))
-                    .map_err(|e| e.into()),
-            )
+            Some(result.map(|kind| Token::new(kind, self.stream.slice())))
         } else {
             None
         }

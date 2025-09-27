@@ -4,10 +4,12 @@ pub mod token;
 pub use lexer::{Lexer, LexerError};
 pub use token::{Token, TokenKind};
 
+pub type Span = std::ops::Range<usize>;
+
 #[cfg(test)]
 mod tests {
     use crate::lexer::Lexer;
-    use crate::token::{Token, TokenKind};
+    use crate::token::TokenKind;
 
     macro_rules! assert_lex_inner {
         ($lexer:ident, token, $pattern:pat) => {
@@ -148,10 +150,40 @@ mod tests {
     );
     test_lex!(
         keywords,
-        "const static pub",
+        r"
+        const static pub move
+        if else while for do break continue return match case
+        where fn struct enum variant union type use mod impl trait extern
+        let as
+        ",
         kind @ TokenKind::Const,
         kind @ TokenKind::Static,
-        kind @ TokenKind::Pub
+        kind @ TokenKind::Pub,
+        kind @ TokenKind::Move,
+        kind @ TokenKind::If,
+        kind @ TokenKind::Else,
+        kind @ TokenKind::While,
+        kind @ TokenKind::For,
+        kind @ TokenKind::Do,
+        kind @ TokenKind::Break,
+        kind @ TokenKind::Continue,
+        kind @ TokenKind::Return,
+        kind @ TokenKind::Match,
+        kind @ TokenKind::Case,
+        kind @ TokenKind::Where,
+        kind @ TokenKind::Fn,
+        kind @ TokenKind::Struct,
+        kind @ TokenKind::Enum,
+        kind @ TokenKind::Variant,
+        kind @ TokenKind::Union,
+        kind @ TokenKind::Type,
+        kind @ TokenKind::Use,
+        kind @ TokenKind::Mod,
+        kind @ TokenKind::Impl,
+        kind @ TokenKind::Trait,
+        kind @ TokenKind::Extern,
+        kind @ TokenKind::Let,
+        kind @ TokenKind::As
     );
     test_lex!(
         primitives,
@@ -181,13 +213,13 @@ mod tests {
     test_lex!(
         identifiers,
         "foo _foo foo123 i32_ @macro_name #comptime_name $directive_name",
-        token @ Token { kind: TokenKind::Identifier, slice: "foo" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_foo" },
-        token @ Token { kind: TokenKind::Identifier, slice: "foo123" },
-        token @ Token { kind: TokenKind::Identifier, slice: "i32_" },
-        token @ Token { kind: TokenKind::MacroIdentifier, slice: "@macro_name" },
-        token @ Token { kind: TokenKind::ComptimeIdentifier, slice: "#comptime_name" },
-        token @ Token { kind: TokenKind::DirectiveIdentifier, slice: "$directive_name" }
+        kind @ TokenKind::Identifier => "foo",
+        kind @ TokenKind::Identifier => "_foo",
+        kind @ TokenKind::Identifier => "foo123",
+        kind @ TokenKind::Identifier => "i32_",
+        kind @ TokenKind::MacroIdentifier => "@macro_name",
+        kind @ TokenKind::ComptimeIdentifier => "#comptime_name",
+        kind @ TokenKind::DirectiveIdentifier => "$directive_name"
     );
     test_lex!(
         integers,
@@ -197,39 +229,39 @@ mod tests {
         0o7755 0O7755 0o77_55 0O7_7_5_5 0o77__55 0O_7755 0o7755_
         0xAA55 0XAA55 0xAA_55 0XA_A_5_5 0xAA__55 0X_AA55 0xAA55_
         ",
-        token @ Token { kind: TokenKind::DecInt, slice: "123" },
-        token @ Token { kind: TokenKind::DecInt, slice: "1_2_3" },
-        token @ Token { kind: TokenKind::DecInt, slice: "1__2__3" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_123" },
-        token @ Token { kind: TokenKind::DecInt, slice: "123" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_" },
-        token @ Token { kind: TokenKind::BinInt, slice: "0b1010" },
-        token @ Token { kind: TokenKind::BinInt, slice: "0B1010" },
-        token @ Token { kind: TokenKind::BinInt, slice: "0b10_10" },
-        token @ Token { kind: TokenKind::BinInt, slice: "0B1_0_1_0" },
-        token @ Token { kind: TokenKind::BinInt, slice: "0b10__10" },
-        token @ Token { kind: TokenKind::DecInt, slice: "0" },
-        token @ Token { kind: TokenKind::Identifier, slice: "B_1010" },
-        token @ Token { kind: TokenKind::BinInt, slice: "0b1010" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_" },
-        token @ Token { kind: TokenKind::OctInt, slice: "0o7755" },
-        token @ Token { kind: TokenKind::OctInt, slice: "0O7755" },
-        token @ Token { kind: TokenKind::OctInt, slice: "0o77_55" },
-        token @ Token { kind: TokenKind::OctInt, slice: "0O7_7_5_5" },
-        token @ Token { kind: TokenKind::OctInt, slice: "0o77__55" },
-        token @ Token { kind: TokenKind::DecInt, slice: "0" },
-        token @ Token { kind: TokenKind::Identifier, slice: "O_7755" },
-        token @ Token { kind: TokenKind::OctInt, slice: "0o7755" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_" },
-        token @ Token { kind: TokenKind::HexInt, slice: "0xAA55" },
-        token @ Token { kind: TokenKind::HexInt, slice: "0XAA55" },
-        token @ Token { kind: TokenKind::HexInt, slice: "0xAA_55" },
-        token @ Token { kind: TokenKind::HexInt, slice: "0XA_A_5_5" },
-        token @ Token { kind: TokenKind::HexInt, slice: "0xAA__55" },
-        token @ Token { kind: TokenKind::DecInt, slice: "0" },
-        token @ Token { kind: TokenKind::Identifier, slice: "X_AA55" },
-        token @ Token { kind: TokenKind::HexInt, slice: "0xAA55" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_" }
+        kind @ TokenKind::DecInt => "123",
+        kind @ TokenKind::DecInt => "1_2_3",
+        kind @ TokenKind::DecInt => "1__2__3",
+        kind @ TokenKind::Identifier => "_123",
+        kind @ TokenKind::DecInt => "123",
+        kind @ TokenKind::Identifier => "_",
+        kind @ TokenKind::BinInt => "0b1010",
+        kind @ TokenKind::BinInt => "0B1010",
+        kind @ TokenKind::BinInt => "0b10_10",
+        kind @ TokenKind::BinInt => "0B1_0_1_0",
+        kind @ TokenKind::BinInt => "0b10__10",
+        kind @ TokenKind::DecInt => "0",
+        kind @ TokenKind::Identifier => "B_1010",
+        kind @ TokenKind::BinInt => "0b1010",
+        kind @ TokenKind::Identifier => "_",
+        kind @ TokenKind::OctInt => "0o7755",
+        kind @ TokenKind::OctInt => "0O7755",
+        kind @ TokenKind::OctInt => "0o77_55",
+        kind @ TokenKind::OctInt => "0O7_7_5_5",
+        kind @ TokenKind::OctInt => "0o77__55",
+        kind @ TokenKind::DecInt => "0",
+        kind @ TokenKind::Identifier => "O_7755",
+        kind @ TokenKind::OctInt => "0o7755",
+        kind @ TokenKind::Identifier => "_",
+        kind @ TokenKind::HexInt => "0xAA55",
+        kind @ TokenKind::HexInt => "0XAA55",
+        kind @ TokenKind::HexInt => "0xAA_55",
+        kind @ TokenKind::HexInt => "0XA_A_5_5",
+        kind @ TokenKind::HexInt => "0xAA__55",
+        kind @ TokenKind::DecInt => "0",
+        kind @ TokenKind::Identifier => "X_AA55",
+        kind @ TokenKind::HexInt => "0xAA55",
+        kind @ TokenKind::Identifier => "_"
     );
     test_lex!(
         floats,
@@ -240,53 +272,53 @@ mod tests {
         1e10    1E10    1e-10    1E-10    1e+10    1E+10
         _1e10   1_E10   1e-_10   1E-1_0   1e+10_   1E_10
         ",
-        token @ Token { kind: TokenKind::Float, slice: "1.0" },
-        token @ Token { kind: TokenKind::IntFloat, slice: "1." },
-        token @ Token { kind: TokenKind::FloatExp, slice: "1.0e10" },
-        token @ Token { kind: TokenKind::FloatExp, slice: "1.0E10" },
-        token @ Token { kind: TokenKind::FloatExp, slice: "1.0e-10" },
-        token @ Token { kind: TokenKind::FloatExp, slice: "1.0E-10" },
-        token @ Token { kind: TokenKind::FloatExp, slice: "1.0e+10" },
-        token @ Token { kind: TokenKind::FloatExp, slice: "1.0E+10" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_1" },
+        kind @ TokenKind::Float => "1.0",
+        kind @ TokenKind::IntFloat => "1.",
+        kind @ TokenKind::FloatExp => "1.0e10",
+        kind @ TokenKind::FloatExp => "1.0E10",
+        kind @ TokenKind::FloatExp => "1.0e-10",
+        kind @ TokenKind::FloatExp => "1.0E-10",
+        kind @ TokenKind::FloatExp => "1.0e+10",
+        kind @ TokenKind::FloatExp => "1.0E+10",
+        kind @ TokenKind::Identifier => "_1",
         error => ".",
-        token @ Token { kind: TokenKind::IntExp, slice: "0e10" },
-        token @ Token { kind: TokenKind::DecInt, slice: "1" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_" },
+        kind @ TokenKind::IntExp => "0e10",
+        kind @ TokenKind::DecInt => "1",
+        kind @ TokenKind::Identifier => "_",
         error => ".",
-        token @ Token { kind: TokenKind::IntExp, slice: "0E10" },
-        token @ Token { kind: TokenKind::IntFloat, slice: "1." },
-        token @ Token { kind: TokenKind::Identifier, slice: "_0e" },
+        kind @ TokenKind::IntExp => "0E10",
+        kind @ TokenKind::IntFloat => "1.",
+        kind @ TokenKind::Identifier => "_0e",
         error => "-",
-        token @ Token { kind: TokenKind::DecInt, slice: "10" },
-        token @ Token { kind: TokenKind::Float, slice: "1.0" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_E" },
+        kind @ TokenKind::DecInt => "10",
+        kind @ TokenKind::Float => "1.0",
+        kind @ TokenKind::Identifier => "_E",
         error => "-",
-        token @ Token { kind: TokenKind::DecInt, slice: "10" },
-        token @ Token { kind: TokenKind::Float, slice: "1.0" },
-        token @ Token { kind: TokenKind::Identifier, slice: "e" },
+        kind @ TokenKind::DecInt => "10",
+        kind @ TokenKind::Float => "1.0",
+        kind @ TokenKind::Identifier => "e",
         error => "+",
-        token @ Token { kind: TokenKind::Identifier, slice: "_10" },
-        token @ Token { kind: TokenKind::FloatExp, slice: "1.0E+10" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_" },
-        token @ Token { kind: TokenKind::IntExp, slice: "1e10" },
-        token @ Token { kind: TokenKind::IntExp, slice: "1E10" },
-        token @ Token { kind: TokenKind::IntExp, slice: "1e-10" },
-        token @ Token { kind: TokenKind::IntExp, slice: "1E-10" },
-        token @ Token { kind: TokenKind::IntExp, slice: "1e+10" },
-        token @ Token { kind: TokenKind::IntExp, slice: "1E+10" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_1e10" },
-        token @ Token { kind: TokenKind::DecInt, slice: "1" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_E10" },
-        token @ Token { kind: TokenKind::DecInt, slice: "1" },
-        token @ Token { kind: TokenKind::Identifier, slice: "e" },
+        kind @ TokenKind::Identifier => "_10",
+        kind @ TokenKind::FloatExp => "1.0E+10",
+        kind @ TokenKind::Identifier => "_",
+        kind @ TokenKind::IntExp => "1e10",
+        kind @ TokenKind::IntExp => "1E10",
+        kind @ TokenKind::IntExp => "1e-10",
+        kind @ TokenKind::IntExp => "1E-10",
+        kind @ TokenKind::IntExp => "1e+10",
+        kind @ TokenKind::IntExp => "1E+10",
+        kind @ TokenKind::Identifier => "_1e10",
+        kind @ TokenKind::DecInt => "1",
+        kind @ TokenKind::Identifier => "_E10",
+        kind @ TokenKind::DecInt => "1",
+        kind @ TokenKind::Identifier => "e",
         error => "-",
-        token @ Token { kind: TokenKind::Identifier, slice: "_10" },
-        token @ Token { kind: TokenKind::IntExp, slice: "1E-1_0" },
-        token @ Token { kind: TokenKind::IntExp, slice: "1e+10" },
-        token @ Token { kind: TokenKind::Identifier, slice: "_" },
-        token @ Token { kind: TokenKind::DecInt, slice: "1" },
-        token @ Token { kind: TokenKind::Identifier, slice: "E_10" }
+        kind @ TokenKind::Identifier => "_10",
+        kind @ TokenKind::IntExp => "1E-1_0",
+        kind @ TokenKind::IntExp => "1e+10",
+        kind @ TokenKind::Identifier => "_",
+        kind @ TokenKind::DecInt => "1",
+        kind @ TokenKind::Identifier => "E_10"
     );
     test_lex!(
         strings,
@@ -296,22 +328,22 @@ mod tests {
         r##"this is a raw string with "# in it"##
         r###"this is a raw string with ##" in it"###
         "####,
-        token @ Token { kind: TokenKind::String, slice: r#""this is a string""# },
-        token @ Token { kind: TokenKind::String, slice: r#""this is a \"string\" with escapes""# },
-        token @ Token { kind: TokenKind::String, slice: r#""""# },
-        token @ Token { kind: TokenKind::RawString, slice: r##"r#"this is a raw string"#"## },
-        token @ Token { kind: TokenKind::RawString, slice: r###"r##"this is a raw string with "# in it"##"### },
-        token @ Token { kind: TokenKind::RawString, slice: r####"r###"this is a raw string with ##" in it"###"#### }
+        kind @ TokenKind::String => r#""this is a string""#,
+        kind @ TokenKind::String => r#""this is a \"string\" with escapes""#,
+        kind @ TokenKind::String => r#""""#,
+        kind @ TokenKind::RawString => r##"r#"this is a raw string"#"##,
+        kind @ TokenKind::RawString => r###"r##"this is a raw string with "# in it"##"###,
+        kind @ TokenKind::RawString => r####"r###"this is a raw string with ##" in it"###"####
     );
     test_lex!(
         open_string,
         r#""this is an open string"#,
         error,
-        token @ Token { kind: TokenKind::Identifier, slice: "this" },
-        token @ Token { kind: TokenKind::Identifier, slice: "is" },
-        token @ Token { kind: TokenKind::Identifier, slice: "an" },
-        token @ Token { kind: TokenKind::Identifier, slice: "open" },
-        token @ Token { kind: TokenKind::Identifier, slice: "string" }
+        kind @ TokenKind::Identifier => "this",
+        kind @ TokenKind::Identifier => "is",
+        kind @ TokenKind::Identifier => "an",
+        kind @ TokenKind::Identifier => "open",
+        kind @ TokenKind::Identifier => "string"
     );
     test_lex!(
         open_raw_string,

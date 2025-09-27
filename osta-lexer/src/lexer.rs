@@ -11,19 +11,21 @@ pub enum LexerError {
     InvalidInteger(#[from] std::num::ParseIntError),
     #[error("unterminated block comment")]
     UnterminatedBlockComment,
+    #[error("unexpected end of file")]
+    UnexpectedEOF,
 }
 
-pub type TokenResult<'src> = Result<Token<'src>, LexerError>;
+pub type TokenResult<'src> = Result<Token, LexerError>;
 
 pub struct Lexer<'src> {
-    stream: ::logos::Lexer<'src, TokenKind>,
+    stream: ::logos::SpannedIter<'src, TokenKind>,
     queue: Vec<TokenResult<'src>>,
 }
 
 impl<'src> Lexer<'src> {
     pub fn new(source: &'src str) -> Self {
         Self {
-            stream: TokenKind::lexer(source),
+            stream: TokenKind::lexer(source).spanned(),
             queue: Vec::new(),
         }
     }
@@ -47,8 +49,8 @@ impl<'src> Lexer<'src> {
     fn inner_next(&mut self) -> Option<TokenResult<'src>> {
         if let Some(result) = self.queue.pop() {
             Some(result)
-        } else if let Some(result) = self.stream.next() {
-            Some(result.map(|kind| Token::new(kind, self.stream.slice())))
+        } else if let Some((result, span)) = self.stream.next() {
+            Some(result.map(|kind| Token::new(kind, span)))
         } else {
             None
         }

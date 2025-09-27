@@ -1,16 +1,16 @@
-use crate::LexerError;
+use crate::{LexerError, Span};
 use logos::Logos;
 
 #[derive(Debug, PartialEq)]
 #[allow(dead_code)]
-pub struct Token<'src> {
+pub struct Token {
     pub kind: TokenKind,
-    pub slice: &'src str,
+    pub span: Span,
 }
 
-impl<'src> Token<'src> {
-    pub fn new(kind: TokenKind, slice: &'src str) -> Self {
-        Self { kind, slice }
+impl Token {
+    pub fn new(kind: TokenKind, span: Span) -> Self {
+        Self { kind, span }
     }
 }
 
@@ -19,8 +19,10 @@ impl<'src> Token<'src> {
 #[logos(skip r"[ \t\r\n\f]+")]
 #[logos(subpattern dec_int = r"[0-9]+(_+[0-9]+)*")]
 #[logos(subpattern pos_int = r"0*[1-9][0-9]*")]
-#[cfg_attr(feature = "unicode-identifiers", logos(subpattern ident = r"(\p{XID_Start}|_)\p{XID_Continue}*"
-))]
+#[cfg_attr(
+    feature = "unicode-identifiers",
+    logos(subpattern ident = r"(\p{XID_Start}|_)\p{XID_Continue}*")
+)]
 #[cfg_attr(
     not(feature = "unicode-identifiers"),
     logos(subpattern ident = r"[a-zA-Z_][a-zA-Z0-9_]*")
@@ -42,6 +44,57 @@ pub enum TokenKind {
     Pub,
     #[token("move")]
     Move,
+    // Control flow
+    #[token("if")]
+    If,
+    #[token("else")]
+    Else,
+    #[token("while")]
+    While,
+    #[token("for")]
+    For,
+    #[token("do")]
+    Do,
+    #[token("break")]
+    Break,
+    #[token("continue")]
+    Continue,
+    #[token("return")]
+    Return,
+    #[token("match")]
+    Match,
+    #[token("case")]
+    Case,
+    // Declarations
+    #[token("where")]
+    Where,
+    #[token("fn")]
+    Fn,
+    #[token("struct")]
+    Struct,
+    #[token("enum")]
+    Enum,
+    #[token("variant")]
+    Variant,
+    #[token("union")]
+    Union,
+    #[token("type")]
+    Type,
+    #[token("use")]
+    Use,
+    #[token("mod")]
+    Mod,
+    #[token("impl")]
+    Impl,
+    #[token("trait")]
+    Trait,
+    #[token("extern")]
+    Extern,
+    // Variables
+    #[token("let")]
+    Let,
+    #[token("as")]
+    As,
     // Data types
     #[token("never")]
     Never,

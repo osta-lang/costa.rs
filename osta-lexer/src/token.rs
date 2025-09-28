@@ -205,6 +205,10 @@ fn lex_raw_string(lexer: &mut logos::Lexer<TokenKind>) -> bool {
         if c == '\\' {
             escape = !escape;
         } else if c == '"' && !escape {
+            if count == 0 {
+                return true;
+            }
+
             exiting = true;
         } else {
             escape = false;

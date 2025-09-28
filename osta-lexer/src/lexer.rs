@@ -11,6 +11,8 @@ pub enum LexerError {
     InvalidInteger(#[from] std::num::ParseIntError),
     #[error("unterminated block comment")]
     UnterminatedBlockComment,
+    #[error("unterminated string literal")]
+    UnterminatedString,
     #[error("unexpected end of file")]
     UnexpectedEOF,
 }

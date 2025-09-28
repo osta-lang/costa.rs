@@ -396,7 +396,7 @@ fn lex_nty(lexer: &mut logos::Lexer<TokenKind>) -> Result<usize, LexerError> {
     Ok(nty)
 }
 
-fn lex_raw_string(lexer: &mut logos::Lexer<TokenKind>) -> bool {
+fn lex_raw_string(lexer: &mut logos::Lexer<TokenKind>) -> Result<(), LexerError> {
     let hashes = lexer.slice().len() - 2;
     let mut exiting = false;
     let mut escape = false;
@@ -408,7 +408,7 @@ fn lex_raw_string(lexer: &mut logos::Lexer<TokenKind>) -> bool {
         if exiting {
             if c == '#' {
                 if count == 1 {
-                    return true;
+                    return Ok(());
                 }
 
                 count -= 1;
@@ -424,7 +424,7 @@ fn lex_raw_string(lexer: &mut logos::Lexer<TokenKind>) -> bool {
             escape = !escape;
         } else if c == '"' && !escape {
             if count == 0 {
-                return true;
+                return Ok(());
             }
 
             exiting = true;
@@ -433,5 +433,5 @@ fn lex_raw_string(lexer: &mut logos::Lexer<TokenKind>) -> bool {
         }
     }
 
-    false
+    Err(LexerError::UnterminatedString)
 }

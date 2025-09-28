@@ -61,15 +61,20 @@ impl<'src> Iterator for Lexer<'src> {
     type Item = TokenResult<'src>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner_next()
-        // TODO(johan): add macro expansion here
-        /*
-        TODO(johan): implement operators here
-        Operators in osta are not necessarily hardcoded tokens, they can be sequences of other
-        tokens. For example, the operator `->` is hardcoded, but `+` is not, it must be emitted
-        redirecting the unrecognized token as an operator token. The token `++` can collide with
-        `+`, and this patterns can be arbitrarily long and unknown by us, so we must consider a
-        Trie structure or an ART to store operators and match them greedily.
-        */
+        loop {
+            match self.inner_next() {
+                None => break None,
+                Some(result) => match result {
+                    Err(err) => break Some(Err(err)),
+                    Ok(token) => {
+                        if token.kind == TokenKind::Comment {
+                            continue;
+                        } else {
+                            break Some(Ok(token));
+                        }
+                    }
+                }
+            }
+        }
     }
 }

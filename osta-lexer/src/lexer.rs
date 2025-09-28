@@ -41,16 +41,11 @@ impl<'src> Lexer<'src> {
         self.queue.get(n)
     }
 
-    #[cfg(test)]
-    pub(crate) fn slice(&self) -> &'src str {
-        self.stream.slice()
-    }
-
     fn inner_next(&mut self) -> Option<TokenResult<'src>> {
         if let Some(result) = self.queue.pop() {
             Some(result)
         } else if let Some((result, span)) = self.stream.next() {
-            Some(result.map(|kind| Token::new(kind, span)))
+            Some(result.map(|kind| Token::new(kind, span.into())))
         } else {
             None
         }

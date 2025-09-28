@@ -72,8 +72,13 @@ name = "osta-lexer"
 version = "0.1.0"
 dependencies = [
  "logos",
+ "osta-syntax",
  "thiserror",
 ]
+
+[[package]]
+name = "osta-syntax"
+version = "0.1.0"
 
 [[package]]
 name = "proc-macro2"

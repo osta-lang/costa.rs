@@ -1,5 +1,6 @@
-use crate::{LexerError, Span};
+use crate::LexerError;
 use logos::Logos;
+use osta_syntax::Span;
 
 #[derive(Debug, PartialEq)]
 #[allow(dead_code)]

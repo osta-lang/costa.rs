@@ -13,8 +13,6 @@ pub enum LexerError {
     UnterminatedBlockComment,
     #[error("unterminated string literal")]
     UnterminatedString,
-    #[error("unexpected end of file")]
-    UnexpectedEOF,
 }
 
 pub type TokenResult<'src> = Result<Token, LexerError>;

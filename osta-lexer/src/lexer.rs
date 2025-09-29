@@ -11,19 +11,21 @@ pub enum LexerError {
     InvalidInteger(#[from] std::num::ParseIntError),
     #[error("unterminated block comment")]
     UnterminatedBlockComment,
+    #[error("unterminated string literal")]
+    UnterminatedString,
 }
 
-pub type TokenResult<'src> = Result<Token<'src>, LexerError>;
+pub type TokenResult<'src> = Result<Token, LexerError>;
 
 pub struct Lexer<'src> {
-    stream: ::logos::Lexer<'src, TokenKind>,
+    stream: ::logos::SpannedIter<'src, TokenKind>,
     queue: Vec<TokenResult<'src>>,
 }
 
 impl<'src> Lexer<'src> {
     pub fn new(source: &'src str) -> Self {
         Self {
-            stream: TokenKind::lexer(source),
+            stream: TokenKind::lexer(source).spanned(),
             queue: Vec::new(),
         }
     }
@@ -39,20 +41,11 @@ impl<'src> Lexer<'src> {
         self.queue.get(n)
     }
 
-    #[cfg(test)]
-    pub(crate) fn slice(&self) -> &'src str {
-        self.stream.slice()
-    }
-
     fn inner_next(&mut self) -> Option<TokenResult<'src>> {
         if let Some(result) = self.queue.pop() {
             Some(result)
-        } else if let Some(result) = self.stream.next() {
-            Some(
-                result
-                    .map(|kind| Token::new(kind, self.stream.slice()))
-                    .map_err(|e| e.into()),
-            )
+        } else if let Some((result, span)) = self.stream.next() {
+            Some(result.map(|kind| Token::new(kind, span.into())))
         } else {
             None
         }
@@ -63,15 +56,20 @@ impl<'src> Iterator for Lexer<'src> {
     type Item = TokenResult<'src>;
 
     fn next(&mut self) -> Option<Self::Item> {
-        self.inner_next()
-        // TODO(johan): add macro expansion here
-        /*
-        TODO(johan): implement operators here
-        Operators in osta are not necessarily hardcoded tokens, they can be sequences of other
-        tokens. For example, the operator `->` is hardcoded, but `+` is not, it must be emitted
-        redirecting the unrecognized token as an operator token. The token `++` can collide with
-        `+`, and this patterns can be arbitrarily long and unknown by us, so we must consider a
-        Trie structure or an ART to store operators and match them greedily.
-        */
+        loop {
+            match self.inner_next() {
+                None => break None,
+                Some(result) => match result {
+                    Err(err) => break Some(Err(err)),
+                    Ok(token) => {
+                        if token.kind == TokenKind::Comment {
+                            continue;
+                        } else {
+                            break Some(Ok(token));
+                        }
+                    }
+                }
+            }
+        }
     }
 }

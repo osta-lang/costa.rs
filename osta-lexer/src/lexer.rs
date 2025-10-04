@@ -15,11 +15,11 @@ pub enum LexerError {
     UnterminatedString,
 }
 
-pub type TokenResult<'src> = Result<Token, LexerError>;
+pub type TokenResult = Result<Token, LexerError>;
 
 pub struct Lexer<'src> {
     stream: ::logos::SpannedIter<'src, TokenKind>,
-    queue: Vec<TokenResult<'src>>,
+    queue: Vec<TokenResult>,
 }
 
 impl<'src> Lexer<'src> {
@@ -30,7 +30,7 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    pub fn peek(&mut self, n: usize) -> Option<&TokenResult<'src>> {
+    pub fn peek(&mut self, n: usize) -> Option<&TokenResult> {
         while self.queue.len() <= n {
             if let Some(result) = self.next() {
                 self.queue.push(result)
@@ -41,7 +41,7 @@ impl<'src> Lexer<'src> {
         self.queue.get(n)
     }
 
-    fn inner_next(&mut self) -> Option<TokenResult<'src>> {
+    fn inner_next(&mut self) -> Option<TokenResult> {
         if let Some(result) = self.queue.pop() {
             Some(result)
         } else if let Some((result, span)) = self.stream.next() {
@@ -53,7 +53,7 @@ impl<'src> Lexer<'src> {
 }
 
 impl<'src> Iterator for Lexer<'src> {
-    type Item = TokenResult<'src>;
+    type Item = TokenResult;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {

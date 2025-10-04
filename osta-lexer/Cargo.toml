@@ -10,4 +10,5 @@ unicode-identifiers = []
 [dependencies]
 osta-syntax.workspace = true
 thiserror.workspace = true
+
 logos = { git = "https://github.com/JohanVonElectrum/logos.git" } # TODO(johan): switch back when #491 is merged

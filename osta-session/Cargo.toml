@@ -1,0 +1,9 @@
+[package]
+name = "osta-session"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+osta-index.workspace = true
+
+bumpalo.workspace = true

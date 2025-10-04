@@ -1,8 +1,12 @@
 [workspace]
-members = ["osta-lexer", "osta-syntax"]
+members = ["osta-index", "osta-lexer", "osta-session", "osta-syntax"]
 resolver = "3"
 
 [workspace.dependencies]
+osta-index = { path = "./osta-index" }
 osta-lexer = { path = "./osta-lexer" }
+osta-session = { path = "./osta-session" }
 osta-syntax = { path = "./osta-syntax" }
+
 thiserror = "2.0.16"
+bumpalo = { version = "3.19.0", features = ["allocator_api"] }

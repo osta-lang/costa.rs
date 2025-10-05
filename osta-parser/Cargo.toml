@@ -1,0 +1,12 @@
+[package]
+name = "osta-parser"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+osta-ast.workspace = true
+osta-lexer.workspace = true
+osta-session.workspace = true
+osta-syntax.workspace = true
+
+thiserror.workspace = true

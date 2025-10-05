@@ -1,6 +1,6 @@
 pub type SpanRange = std::ops::Range<usize>;
 
-#[derive(Clone, PartialEq)]
+#[derive(Clone, Eq, PartialEq)]
 pub struct Span(SpanRange);
 
 impl Span {

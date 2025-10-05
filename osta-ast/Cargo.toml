@@ -1,0 +1,9 @@
+[package]
+name = "osta-ast"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+osta-index.workspace = true
+osta-syntax.workspace = true
+osta-session.workspace = true

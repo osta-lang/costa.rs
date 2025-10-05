@@ -13,13 +13,20 @@ pub enum LexerError {
     UnterminatedBlockComment,
     #[error("unterminated string literal")]
     UnterminatedString,
+    #[error("unexpected EOF")]
+    UnexpectedEof,
+    #[error("unexpected token: expected {expected:?}, found {found:?}")]
+    UnexpectedToken {
+        expected: TokenKind,
+        found: TokenKind,
+    },
 }
 
-pub type TokenResult = Result<Token, LexerError>;
+pub type LexResult<T = Token> = Result<T, LexerError>;
 
 pub struct Lexer<'src> {
     stream: ::logos::SpannedIter<'src, TokenKind>,
-    queue: Vec<TokenResult>,
+    queue: Vec<LexResult>,
 }
 
 impl<'src> Lexer<'src> {
@@ -30,7 +37,11 @@ impl<'src> Lexer<'src> {
         }
     }
 
-    pub fn peek(&mut self, n: usize) -> Option<&TokenResult> {
+    pub fn source(&self) -> &'src str {
+        self.stream.source()
+    }
+
+    pub fn peek(&mut self, n: usize) -> Option<&LexResult> {
         while self.queue.len() <= n {
             if let Some(result) = self.next() {
                 self.queue.push(result)
@@ -41,7 +52,7 @@ impl<'src> Lexer<'src> {
         self.queue.get(n)
     }
 
-    fn inner_next(&mut self) -> Option<TokenResult> {
+    fn inner_next(&mut self) -> Option<LexResult> {
         if let Some(result) = self.queue.pop() {
             Some(result)
         } else if let Some((result, span)) = self.stream.next() {
@@ -50,10 +61,34 @@ impl<'src> Lexer<'src> {
             None
         }
     }
+
+    pub fn expect(&mut self, kind: TokenKind) -> LexResult {
+        match self.peek(0) {
+            Some(Ok(token)) if token.kind == kind => unsafe {
+                self.inner_next().unwrap_unchecked()
+            },
+            Some(Ok(token)) => Err(LexerError::UnexpectedToken {
+                expected: kind,
+                found: token.kind.clone(),
+            }),
+            Some(Err(_)) => unsafe {
+                self.inner_next().unwrap_unchecked()
+            },
+            None => Err(LexerError::UnexpectedEof),
+        }
+    }
+
+    pub fn bump(&mut self) -> LexResult<()> {
+        match self.inner_next() {
+            Some(Ok(_)) => Ok(()),
+            Some(Err(e)) => Err(e),
+            None => Err(LexerError::UnexpectedEof),
+        }
+    }
 }
 
 impl<'src> Iterator for Lexer<'src> {
-    type Item = TokenResult;
+    type Item = LexResult;
 
     fn next(&mut self) -> Option<Self::Item> {
         loop {
@@ -68,7 +103,7 @@ impl<'src> Iterator for Lexer<'src> {
                             break Some(Ok(token));
                         }
                     }
-                }
+                },
             }
         }
     }

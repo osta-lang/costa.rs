@@ -74,6 +74,15 @@ source = "registry+https://github.com/rust-lang/crates.io-index"
 checksum = "f52b00d39961fc5b2736ea853c9cc86238e165017a493d1d5c8eac6bdc4cc273"
 
 [[package]]
+name = "osta-ast"
+version = "0.1.0"
+dependencies = [
+ "osta-index",
+ "osta-session",
+ "osta-syntax",
+]
+
+[[package]]
 name = "osta-index"
 version = "0.1.0"
 
@@ -82,6 +91,17 @@ name = "osta-lexer"
 version = "0.1.0"
 dependencies = [
  "logos",
+ "osta-syntax",
+ "thiserror",
+]
+
+[[package]]
+name = "osta-parser"
+version = "0.1.0"
+dependencies = [
+ "osta-ast",
+ "osta-lexer",
+ "osta-session",
  "osta-syntax",
  "thiserror",
 ]

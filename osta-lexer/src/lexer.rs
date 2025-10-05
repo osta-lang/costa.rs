@@ -16,10 +16,7 @@ pub enum LexerError {
     #[error("unexpected EOF")]
     UnexpectedEof,
     #[error("unexpected token: expected {expected:?}, found {found:?}")]
-    UnexpectedToken {
-        expected: TokenKind,
-        found: TokenKind,
-    },
+    UnexpectedToken { expected: TokenKind, found: TokenKind },
 }
 
 pub type LexResult<T = Token> = Result<T, LexerError>;
@@ -67,10 +64,9 @@ impl<'src> Lexer<'src> {
             Some(Ok(token)) if token.kind == kind => unsafe {
                 self.inner_next().unwrap_unchecked()
             },
-            Some(Ok(token)) => Err(LexerError::UnexpectedToken {
-                expected: kind,
-                found: token.kind.clone(),
-            }),
+            Some(Ok(token)) => {
+                Err(LexerError::UnexpectedToken { expected: kind, found: token.kind.clone() })
+            }
             Some(Err(_)) => unsafe { self.inner_next().unwrap_unchecked() },
             None => Err(LexerError::UnexpectedEof),
         }

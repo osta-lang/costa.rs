@@ -39,9 +39,9 @@ impl From<SpanRange> for Span {
     }
 }
 
-impl Into<SpanRange> for Span {
-    fn into(self) -> SpanRange {
-        self.0
+impl From<Span> for SpanRange {
+    fn from(value: Span) -> SpanRange {
+        value.0
     }
 }
 

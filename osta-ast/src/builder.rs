@@ -10,28 +10,19 @@ pub struct AstBuilder {
 
 impl AstBuilder {
     pub fn new() -> Self {
-        Self {
-            nodes: IndexVec::new(),
-            items: IndexVec::new(),
-        }
+        Self { nodes: IndexVec::new(), items: IndexVec::new() }
     }
 
     pub fn build(self) -> AST {
-        AST {
-            nodes: self.nodes,
-            items: self.items,
-        }
+        AST { nodes: self.nodes, items: self.items }
     }
 
     pub fn checkpoint(&mut self) -> Checkpoint {
-        Checkpoint {
-            idx: self.nodes.next_index(),
-            builder: self,
-        }
+        Checkpoint { idx: self.nodes.next_index(), builder: self }
     }
 
     pub fn span_of(&self, id: NodeId) -> Span {
-        (&self.nodes[id]).span.clone()
+        self.nodes[id].span.clone()
     }
 
     pub fn add_item(&mut self, root: NodeId) -> ItemId {
@@ -42,7 +33,13 @@ impl AstBuilder {
         self.nodes.push(node)
     }
 
-    pub fn add_fn_decl(&mut self, span: Span, ident: Ident, ty: Option<Ty>, body: NodeId) -> NodeId {
+    pub fn add_fn_decl(
+        &mut self,
+        span: Span,
+        ident: Ident,
+        ty: Option<Ty>,
+        body: NodeId,
+    ) -> NodeId {
         let node = AstNode::fn_decl(span, ident, ty, body);
         self.add_node(node)
     }
@@ -55,6 +52,12 @@ impl AstBuilder {
     pub fn add_block(&mut self, span: Span, first_stmt_id: Option<NodeId>) -> NodeId {
         let node = AstNode::block(span, first_stmt_id);
         self.add_node(node)
+    }
+}
+
+impl Default for AstBuilder {
+    fn default() -> Self {
+        Self::new()
     }
 }
 

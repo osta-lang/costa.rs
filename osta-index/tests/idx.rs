@@ -12,18 +12,9 @@ fn lower_niche() {
 
     assert_eq!(size_of::<Option<MyIdx>>(), size_of::<u32>());
     assert_eq!(size_of::<Option<Option<MyIdx>>>(), size_of::<u32>());
-    assert_eq!(
-        size_of::<Option<Option<Option<MyIdx>>>>(),
-        size_of::<u32>()
-    );
-    assert_eq!(
-        size_of::<Option<Option<Option<Option<MyIdx>>>>>(),
-        size_of::<u32>()
-    );
-    assert_eq!(
-        size_of::<Option<Option<Option<Option<Option<MyIdx>>>>>>(),
-        size_of::<u32>()
-    );
+    assert_eq!(size_of::<Option<Option<Option<MyIdx>>>>(), size_of::<u32>());
+    assert_eq!(size_of::<Option<Option<Option<Option<MyIdx>>>>>(), size_of::<u32>());
+    assert_eq!(size_of::<Option<Option<Option<Option<Option<MyIdx>>>>>>(), size_of::<u32>());
 
     assert_eq!(
         size_of::<Option<Option<Option<Option<Option<Option<MyIdx>>>>>>>(),
@@ -43,18 +34,9 @@ fn upper_niche() {
 
     assert_eq!(size_of::<Option<MyIdx>>(), size_of::<u32>());
     assert_eq!(size_of::<Option<Option<MyIdx>>>(), size_of::<u32>());
-    assert_eq!(
-        size_of::<Option<Option<Option<MyIdx>>>>(),
-        size_of::<u32>()
-    );
-    assert_eq!(
-        size_of::<Option<Option<Option<Option<MyIdx>>>>>(),
-        size_of::<u32>()
-    );
-    assert_eq!(
-        size_of::<Option<Option<Option<Option<Option<MyIdx>>>>>>(),
-        size_of::<u32>()
-    );
+    assert_eq!(size_of::<Option<Option<Option<MyIdx>>>>(), size_of::<u32>());
+    assert_eq!(size_of::<Option<Option<Option<Option<MyIdx>>>>>(), size_of::<u32>());
+    assert_eq!(size_of::<Option<Option<Option<Option<Option<MyIdx>>>>>>(), size_of::<u32>());
 
     assert_eq!(
         size_of::<Option<Option<Option<Option<Option<Option<MyIdx>>>>>>>(),

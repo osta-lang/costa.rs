@@ -94,7 +94,11 @@ fn type_casting() {
 
 #[test]
 fn primitives() {
-    init_lexer!(src, lexer, "never void u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize f32 f64");
+    init_lexer!(
+        src,
+        lexer,
+        "never void u8 u16 u32 u64 u128 usize i8 i16 i32 i64 i128 isize f32 f64"
+    );
 
     assert_next!(src, lexer, TOKEN, TokenKind::Never, "never");
     assert_next!(src, lexer, TOKEN, TokenKind::Void, "void");

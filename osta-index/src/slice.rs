@@ -52,7 +52,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 
     #[inline]
-    pub fn enumerate(&self) -> impl DoubleEndedIterator<Item=(I, &T)> + ExactSizeIterator {
+    pub fn enumerate(&self) -> impl DoubleEndedIterator<Item = (I, &T)> + ExactSizeIterator {
         let _ = I::new(self.len()); // OPTIMIZATION HINT
         self.raw.iter().enumerate().map(|(i, v)| (I::new(i), v))
     }
@@ -60,7 +60,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     #[inline]
     pub fn indicies(
         &self,
-    ) -> impl DoubleEndedIterator<Item=I> + ExactSizeIterator + Clone + 'static {
+    ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
         let _ = I::new(self.len()); // OPTIMIZATION HINT
         (0..self.len()).map(|i| I::new(i))
     }
@@ -73,7 +73,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     #[inline]
     pub fn enumerate_mut(
         &mut self,
-    ) -> impl DoubleEndedIterator<Item=(I, &mut T)> + ExactSizeIterator {
+    ) -> impl DoubleEndedIterator<Item = (I, &mut T)> + ExactSizeIterator {
         let _ = I::new(self.len()); // OPTIMIZATION HINT
         self.raw.iter_mut().enumerate().map(|(i, v)| (I::new(i), v))
     }

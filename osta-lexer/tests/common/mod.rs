@@ -18,12 +18,9 @@ macro_rules! assert_next {
                     token.kind
                 ),
             },
-            Some(Err(e)) => panic!(
-                "expected `{}` ({:?}), got error {:?}",
-                $slice,
-                stringify!($kind),
-                e
-            ),
+            Some(Err(e)) => {
+                panic!("expected `{}` ({:?}), got error {:?}", $slice, stringify!($kind), e)
+            }
             None => panic!("expected `{}` ({:?}), got None", $slice, stringify!($kind)),
         }
     };
@@ -44,11 +41,9 @@ macro_rules! assert_next {
     };
     ($src:expr, $lexer:ident, EOF) => {
         match $lexer.next() {
-            Some(Ok(token)) => panic!(
-                "expected EOF, got `{}` ({:?})",
-                token.span.slice($src),
-                token.kind
-            ),
+            Some(Ok(token)) => {
+                panic!("expected EOF, got `{}` ({:?})", token.span.slice($src), token.kind)
+            }
             Some(Err(e)) => panic!("expected EOF, got error {:?}", e),
             None => {}
         }

@@ -20,10 +20,7 @@ impl<I: Idx, T> IndexVec<I, T> {
 
     #[inline]
     pub const fn from_raw(raw: Vec<T>) -> Self {
-        Self {
-            raw,
-            _marker: std::marker::PhantomData,
-        }
+        Self { raw, _marker: std::marker::PhantomData }
     }
 
     #[inline]
@@ -68,12 +65,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn into_iter(self) -> IntoIter<T> {
-        self.raw.into_iter()
-    }
-
-    #[inline]
-    pub fn into_enumerate(self) -> impl DoubleEndedIterator<Item=(I, T)> + ExactSizeIterator {
+    pub fn into_enumerate(self) -> impl DoubleEndedIterator<Item = (I, T)> + ExactSizeIterator {
         let _ = I::new(self.raw.len()); // OPTIMIZATION HINT
         self.raw
             .into_iter()
@@ -82,7 +74,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     }
 
     #[inline]
-    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item=T> {
+    pub fn drain<R: RangeBounds<usize>>(&mut self, range: R) -> impl Iterator<Item = T> {
         self.raw.drain(range)
     }
 
@@ -90,7 +82,7 @@ impl<I: Idx, T> IndexVec<I, T> {
     pub fn drain_enumerate<R: RangeBounds<usize>>(
         &mut self,
         range: R,
-    ) -> impl Iterator<Item=(I, T)> {
+    ) -> impl Iterator<Item = (I, T)> {
         let begin = match range.start_bound() {
             std::ops::Bound::Included(&start) => start,
             std::ops::Bound::Excluded(&start) => start + 1,
@@ -201,7 +193,7 @@ impl<I: Idx, T> BorrowMut<IndexSlice<I, T>> for IndexVec<I, T> {
 
 impl<I: Idx, T> Extend<T> for IndexVec<I, T> {
     #[inline]
-    fn extend<It: IntoIterator<Item=T>>(&mut self, iter: It) {
+    fn extend<It: IntoIterator<Item = T>>(&mut self, iter: It) {
         self.raw.extend(iter);
     }
 
@@ -218,7 +210,7 @@ impl<I: Idx, T> Extend<T> for IndexVec<I, T> {
 
 impl<I: Idx, T> FromIterator<T> for IndexVec<I, T> {
     #[inline]
-    fn from_iter<It: IntoIterator<Item=T>>(iter: It) -> Self {
+    fn from_iter<It: IntoIterator<Item = T>>(iter: It) -> Self {
         IndexVec::from_raw(Vec::from_iter(iter))
     }
 }

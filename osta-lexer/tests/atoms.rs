@@ -147,7 +147,11 @@ fn string() {
 
 #[test]
 fn raw_string() {
-    init_lexer!(src, lexer, r####"r"raw string" r#"raw "string""# r##"raw r#"string"#"## r###"raw r##"string"##"###"####);
+    init_lexer!(
+        src,
+        lexer,
+        r####"r"raw string" r#"raw "string""# r##"raw r#"string"#"## r###"raw r##"string"##"###"####
+    );
 
     assert_next!(src, lexer, TOKEN, TokenKind::RawString, r#"r"raw string""#);
     assert_next!(src, lexer, TOKEN, TokenKind::RawString, r##"r#"raw "string""#"##);

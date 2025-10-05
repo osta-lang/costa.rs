@@ -23,14 +23,8 @@ fn simple() {
     assert_eq!(
         fn_node.kind,
         AstNodeKind::FnDecl(FnDecl {
-            ident: Ident {
-                idx: InternId::START,
-                span: Span::new(3, 7),
-            },
-            ty: Some(Ty {
-                kind: TyKind::Int(32),
-                span: Span::new(13, 16),
-            }),
+            ident: Ident { idx: InternId::START, span: Span::new(3, 7) },
+            ty: Some(Ty { kind: TyKind::Int(32), span: Span::new(13, 16) }),
             body: NodeId::START,
         })
     );

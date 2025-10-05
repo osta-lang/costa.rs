@@ -27,11 +27,7 @@ impl Interner<BumpAllocator> {
 
 impl<A: Allocator> Interner<A> {
     pub fn with_allocator(allocator: A) -> Self {
-        Self {
-            allocator,
-            indices: IndexVec::new(),
-            map: HashMap::new(),
-        }
+        Self { allocator, indices: IndexVec::new(), map: HashMap::new() }
     }
 
     pub fn resolve(&self, id: InternId) -> &str {
@@ -71,6 +67,12 @@ impl<A: Allocator> Interner<A> {
     }
 }
 
+impl Default for Interner<BumpAllocator> {
+    fn default() -> Self {
+        Self::new()
+    }
+}
+
 #[repr(transparent)]
 pub struct BumpAllocator(Bump);
 
@@ -82,6 +84,8 @@ unsafe impl Allocator for BumpAllocator {
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
         let bump: &Bump = &self.0;
-        unsafe { bump.deallocate(ptr, layout); };
+        unsafe {
+            bump.deallocate(ptr, layout);
+        };
     }
 }

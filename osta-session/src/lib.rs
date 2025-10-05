@@ -17,3 +17,9 @@ impl Session {
         Self { interner }
     }
 }
+
+impl Default for Session {
+    fn default() -> Self {
+        Self::new()
+    }
+}

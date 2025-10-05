@@ -1,6 +1,7 @@
 use osta_ast::ast::{Ident, Ty, TyKind};
 use osta_ast::{AstBuilder, NodeId, AST};
 use osta_lexer::{Lexer, LexerError, Token, TokenKind};
+use osta_session::interner::InternId;
 use osta_session::Session;
 use osta_syntax::Span;
 use std::sync::{Arc, Mutex};
@@ -54,24 +55,11 @@ impl<'src> Parser<'src> {
     }
 
     pub fn parse_fn_decl(&mut self) -> ParseResult {
-        let start = self
-            .lexer
-            .expect(TokenKind::Fn)
-            .map(|tok| tok.span.start)
-            .map_err(ParserError::LexerError)?;
+        let start = self.expect(TokenKind::Fn)?.span.start;
         let ident = self.parse_ident()?;
-        let _ = self
-            .lexer
-            .expect(TokenKind::LParen)
-            .map_err(ParserError::LexerError)?;
-        let _ = self
-            .lexer
-            .expect(TokenKind::RParen)
-            .map_err(ParserError::LexerError)?;
-        let _ = self
-            .lexer
-            .expect(TokenKind::Arrow)
-            .map_err(ParserError::LexerError)?;
+        let _ = self.expect(TokenKind::LParen)?;
+        let _ = self.expect(TokenKind::RParen)?;
+        let _ = self.expect(TokenKind::Arrow)?;
         let ty = self.parse_type()?;
         let body = self.parse_block()?;
         let end = self.builder.span_of(body).end;
@@ -82,26 +70,21 @@ impl<'src> Parser<'src> {
     }
 
     pub fn parse_type(&mut self) -> ParseResult<Ty> {
-        let (ty, span) = match self.lexer.next() {
-            Some(Ok(Token { kind: TokenKind::Never, span })) => (TyKind::Never, span),
-            Some(Ok(Token { kind: TokenKind::Void, span })) => (TyKind::Void, span),
-            Some(Ok(Token { kind: TokenKind::UintType(size), span })) => (TyKind::Uint(size), span),
-            Some(Ok(Token { kind: TokenKind::IntType(size), span })) => (TyKind::Int(size), span),
-            Some(Ok(Token { kind: TokenKind::FloatType(size), span })) => {
-                (TyKind::Float(size), span)
-            }
-            Some(Ok(Token { kind: TokenKind::Identifier, span })) => {
-                let (path_id, span) = match self.lexer.expect_opt(TokenKind::Identifier) {
-                    Some(Ok(Token { kind: TokenKind::DoubleColon, .. })) => {
+        let (ty, span) = match self.next()? {
+            Some(Token { kind: TokenKind::Never, span }) => (TyKind::Never, span),
+            Some(Token { kind: TokenKind::Void, span }) => (TyKind::Void, span),
+            Some(Token { kind: TokenKind::UintType(size), span }) => (TyKind::Uint(size), span),
+            Some(Token { kind: TokenKind::IntType(size), span }) => (TyKind::Int(size), span),
+            Some(Token { kind: TokenKind::FloatType(size), span }) => (TyKind::Float(size), span),
+            Some(Token { kind: TokenKind::Identifier, span }) => {
+                let (path_id, span) = match self.expect_opt(TokenKind::Identifier)? {
+                    Some(Token { kind: TokenKind::DoubleColon, .. }) => {
                         let path_id = self.parse_path(false)?;
                         let path_span = self.builder.span_of(path_id);
                         (path_id, span.join(&path_span))
                     }
-                    Some(Err(e)) => return Err(ParserError::LexerError(e)),
                     _ => {
-                        let slice = span.slice(self.lexer.source());
-                        let mut session = self.session.lock().unwrap();
-                        let idx = session.interner.get_or_intern(slice);
+                        let idx = self.intern(&span);
                         let ident = Ident::new(idx, span.clone());
                         let path_id = self.builder.add_path(span.clone(), ident, None);
                         (path_id, span)
@@ -109,14 +92,8 @@ impl<'src> Parser<'src> {
                 };
                 (TyKind::Other(path_id), span)
             }
-            Some(Ok(Token { kind, span })) => {
-                return Err(ParserError::InvalidType { found: kind.clone(), span: span.clone() });
-            }
-            Some(Err(_)) => {
-                return match self.lexer.bump() {
-                    Ok(_) => unreachable!("shouldn't be here"),
-                    Err(e) => Err(ParserError::LexerError(e)),
-                };
+            Some(Token { kind, span }) => {
+                return Err(ParserError::InvalidType { found: kind, span });
             }
             None => return Err(ParserError::LexerError(LexerError::UnexpectedEof)),
         };
@@ -125,31 +102,22 @@ impl<'src> Parser<'src> {
     }
 
     pub fn parse_path(&mut self, root: bool) -> ParseResult {
-        let ident = match self.lexer.next() {
-            Some(Ok(Token {
-                kind: TokenKind::Identifier | TokenKind::Super | TokenKind::SelfValue,
-                span,
-            })) => {
-                let slice = span.slice(self.lexer.source());
-                let mut session = self.session.lock().unwrap();
-                let idx = session.interner.get_or_intern(slice);
+        let ident = match self.next()? {
+            Some(Token { kind: TokenKind::Identifier | TokenKind::Super, span }) => {
+                let idx = self.intern(&span);
                 Ident::new(idx, span)
             }
-            Some(Ok(Token { kind: TokenKind::Package, span })) if root => {
-                let slice = span.slice(self.lexer.source());
-                let mut session = self.session.lock().unwrap();
-                let idx = session.interner.get_or_intern(slice);
+            Some(Token { kind: TokenKind::Package, span }) if root => {
+                let idx = self.intern(&span);
                 Ident::new(idx, span)
             }
-            Some(Ok(Token { kind, span })) => {
-                return Err(ParserError::InvalidPath { found: kind.clone(), span: span.clone() });
+            Some(Token { kind, span }) => {
+                return Err(ParserError::InvalidPath { found: kind, span });
             }
-            Some(Err(e)) => return Err(ParserError::LexerError(e)),
             None => return Err(ParserError::LexerError(LexerError::UnexpectedEof)),
         };
-        match self.lexer.expect_opt(TokenKind::DoubleColon) {
-            Some(Err(e)) => Err(ParserError::LexerError(e)),
-            Some(Ok(_)) => {
+        match self.expect_opt(TokenKind::DoubleColon)? {
+            Some(_) => {
                 let next = self.parse_path(false)?;
                 let span = ident.span.join(&self.builder.span_of(next));
                 let node = self.builder.add_path(span, ident, Some(next));
@@ -163,16 +131,8 @@ impl<'src> Parser<'src> {
     }
 
     pub fn parse_block(&mut self) -> ParseResult {
-        let start = self
-            .lexer
-            .expect(TokenKind::LBrace)
-            .map(|tok| tok.span.start)
-            .map_err(ParserError::LexerError)?;
-        let end = self
-            .lexer
-            .expect(TokenKind::RBrace)
-            .map(|tok| tok.span.end)
-            .map_err(ParserError::LexerError)?;
+        let start = self.expect(TokenKind::LBrace)?.span.start;
+        let end = self.expect(TokenKind::RBrace)?.span.end;
 
         let span = Span::new(start, end);
         let node = self.builder.add_block(span, None);
@@ -180,15 +140,37 @@ impl<'src> Parser<'src> {
     }
 
     pub fn parse_ident(&mut self) -> ParseResult<Ident> {
-        let tok = self
-            .lexer
-            .expect(TokenKind::Identifier)
-            .map_err(ParserError::LexerError)?;
-
-        let slice = tok.span.slice(self.lexer.source());
-        let mut session = self.session.lock().unwrap();
-        let idx = session.interner.get_or_intern(slice);
-
+        let tok = self.expect(TokenKind::Identifier)?;
+        let idx = self.intern(&tok.span);
         Ok(Ident::new(idx, tok.span))
+    }
+
+    fn next(&mut self) -> ParseResult<Option<Token>> {
+        match self.lexer.next() {
+            Some(Ok(tok)) => Ok(Some(tok)),
+            Some(Err(e)) => Err(ParserError::LexerError(e)),
+            None => Ok(None),
+        }
+    }
+
+    fn expect(&mut self, kind: TokenKind) -> ParseResult<Token> {
+        match self.lexer.expect(kind) {
+            Ok(tok) => Ok(tok),
+            Err(e) => Err(ParserError::LexerError(e)),
+        }
+    }
+
+    fn expect_opt(&mut self, kind: TokenKind) -> ParseResult<Option<Token>> {
+        match self.lexer.expect_opt(kind) {
+            Some(Ok(tok)) => Ok(Some(tok)),
+            Some(Err(e)) => Err(ParserError::LexerError(e)),
+            None => Ok(None),
+        }
+    }
+
+    fn intern(&mut self, span: &Span) -> InternId {
+        let s = span.slice(self.lexer.source());
+        let mut session = self.session.lock().unwrap();
+        session.interner.get_or_intern(s)
     }
 }

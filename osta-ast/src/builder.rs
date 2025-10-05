@@ -47,6 +47,11 @@ impl AstBuilder {
         self.add_node(node)
     }
 
+    pub fn add_path(&mut self, span: Span, this: Ident, next: Option<NodeId>) -> NodeId {
+        let node = AstNode::path(span, this, next);
+        self.add_node(node)
+    }
+
     pub fn add_block(&mut self, span: Span, first_stmt_id: Option<NodeId>) -> NodeId {
         let node = AstNode::block(span, first_stmt_id);
         self.add_node(node)

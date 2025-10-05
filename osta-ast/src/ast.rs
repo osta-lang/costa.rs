@@ -49,6 +49,10 @@ impl AstNode {
         Self::new(span, AstNodeKind::fn_decl(ident, ty, body))
     }
 
+    pub(crate) fn path(span: Span, this: Ident, next: Option<NodeId>) -> Self {
+        Self::new(span, AstNodeKind::path(this, next))
+    }
+
     pub(crate) fn block(span: Span, first_stmt_id: Option<NodeId>) -> Self {
         Self::new(span, AstNodeKind::block(first_stmt_id))
     }
@@ -57,12 +61,17 @@ impl AstNode {
 #[derive(Debug, Eq, PartialEq)]
 pub enum AstNodeKind {
     FnDecl(FnDecl),
+    Path(Path),
     Block(Option<NodeId>),
 }
 
 impl AstNodeKind {
     pub fn fn_decl(ident: Ident, ty: Option<Ty>, body: NodeId) -> Self {
         Self::FnDecl(FnDecl { ident, ty, body })
+    }
+
+    pub fn path(this: Ident, next: Option<NodeId>) -> Self {
+        Self::Path(Path { this, next })
     }
 
     pub fn block(first_stmt_id: Option<NodeId>) -> Self {
@@ -94,7 +103,19 @@ pub enum TyKind {
 }
 
 #[derive(Debug, Eq, PartialEq)]
+pub struct Path {
+    pub this: Ident,
+    pub next: Option<NodeId>,
+}
+
+#[derive(Debug, Eq, PartialEq)]
 pub struct Ident {
     pub idx: InternId,
     pub span: Span,
+}
+
+impl Ident {
+    pub fn new(idx: InternId, span: Span) -> Self {
+        Self { idx, span }
+    }
 }

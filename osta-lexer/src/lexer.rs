@@ -71,10 +71,17 @@ impl<'src> Lexer<'src> {
                 expected: kind,
                 found: token.kind.clone(),
             }),
-            Some(Err(_)) => unsafe {
-                self.inner_next().unwrap_unchecked()
-            },
+            Some(Err(_)) => unsafe { self.inner_next().unwrap_unchecked() },
             None => Err(LexerError::UnexpectedEof),
+        }
+    }
+
+    pub fn expect_opt(&mut self, kind: TokenKind) -> Option<LexResult> {
+        match self.peek(0) {
+            Some(Ok(token)) if token.kind == kind => self.inner_next(),
+            Some(Ok(_)) => None,
+            Some(Err(_)) => self.inner_next(),
+            None => None,
         }
     }
 

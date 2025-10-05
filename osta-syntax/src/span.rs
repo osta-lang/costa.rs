@@ -27,6 +27,10 @@ impl Span {
     pub fn slice<'a>(&self, src: &'a str) -> &'a str {
         &src[self.0.clone()]
     }
+
+    pub fn join(&self, other: &Span) -> Span {
+        Span(self.0.start.min(other.0.start)..self.0.end.max(other.0.end))
+    }
 }
 
 impl From<SpanRange> for Span {

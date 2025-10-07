@@ -1,4 +1,4 @@
-use osta_ast::ast::{AstNodeKind, FnDecl, Ident, ItemId, Ty, TyKind};
+use osta_ast::ast::{AstNodeKind, FnDecl, Interned, InternedKind, ItemId, Ty, TyKind};
 use osta_ast::NodeId;
 use osta_parser::parse;
 use osta_session::interner::InternId;
@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 #[test]
 fn simple() {
     let session = Arc::new(Mutex::new(Session::new()));
-    let src = "fn main() -> i32 { }";
+    let src = include_str!("../../examples/simple.osta");
 
     let ast = parse(session.clone(), src).expect("parse error");
 
@@ -23,7 +23,11 @@ fn simple() {
     assert_eq!(
         fn_node.kind,
         AstNodeKind::FnDecl(FnDecl {
-            ident: Ident { idx: InternId::START, span: Span::new(3, 7) },
+            ident: Interned {
+                idx: InternId::START,
+                span: Span::new(3, 7),
+                kind: InternedKind::Ident
+            },
             ty: Some(Ty { kind: TyKind::Int(32), span: Span::new(13, 16) }),
             body: NodeId::START,
         })

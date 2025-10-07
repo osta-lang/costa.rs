@@ -1,6 +1,7 @@
-use crate::ast::{AstNode, Ident, ItemId, NodeId, Ty};
+use crate::ast::{AstNode, Interned, InternedKind, ItemId, NodeId, Ty};
 use crate::AST;
 use osta_index::{Idx, IndexVec};
+use osta_session::interner::InternId;
 use osta_syntax::Span;
 
 pub struct AstBuilder {
@@ -36,7 +37,7 @@ impl AstBuilder {
     pub fn add_fn_decl(
         &mut self,
         span: Span,
-        ident: Ident,
+        ident: Interned,
         ty: Option<Ty>,
         body: NodeId,
     ) -> NodeId {
@@ -44,13 +45,28 @@ impl AstBuilder {
         self.add_node(node)
     }
 
-    pub fn add_path(&mut self, span: Span, this: Ident, next: Option<NodeId>) -> NodeId {
+    pub fn add_fn_call(&mut self, span: Span, path_id: NodeId, first_arg_id: NodeId) -> NodeId {
+        let node = AstNode::fn_call(span, path_id, first_arg_id);
+        self.add_node(node)
+    }
+
+    pub fn add_path(&mut self, span: Span, this: Interned, next: Option<NodeId>) -> NodeId {
         let node = AstNode::path(span, this, next);
         self.add_node(node)
     }
 
     pub fn add_block(&mut self, span: Span, first_stmt_id: Option<NodeId>) -> NodeId {
         let node = AstNode::block(span, first_stmt_id);
+        self.add_node(node)
+    }
+
+    pub fn add_literal(&mut self, span: Span, lit: InternId, kind: InternedKind) -> NodeId {
+        let node = AstNode::literal(span.clone(), Interned::new(lit, span, kind));
+        self.add_node(node)
+    }
+
+    pub fn add_chain(&mut self, span: Span, first: NodeId, second: NodeId) -> NodeId {
+        let node = AstNode::chain(span, first, second);
         self.add_node(node)
     }
 }

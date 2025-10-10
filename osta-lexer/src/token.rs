@@ -2,7 +2,7 @@ use crate::LexerError;
 use logos::Logos;
 use osta_syntax::Span;
 
-#[derive(Debug, PartialEq)]
+#[derive(Debug, PartialEq, Clone)]
 #[allow(dead_code)]
 pub struct Token {
     pub kind: TokenKind,

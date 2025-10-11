@@ -38,7 +38,7 @@ impl AstBuilder {
         &mut self,
         span: Span,
         ident: Interned,
-        ty: Option<Ty>,
+        ty: Option<NodeId>,
         body: NodeId,
     ) -> NodeId {
         let node = AstNode::fn_decl(span, ident, ty, body);
@@ -93,6 +93,11 @@ impl AstBuilder {
         else_branch: Option<NodeId>,
     ) -> NodeId {
         let node = AstNode::if_expr(span, cond, then_branch, else_branch);
+        self.add_node(node)
+    }
+
+    pub fn add_type(&mut self, span: Span, ty: Ty) -> NodeId {
+        let node = AstNode::ty(span, ty);
         self.add_node(node)
     }
 }

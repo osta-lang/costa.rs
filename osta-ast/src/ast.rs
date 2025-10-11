@@ -47,7 +47,7 @@ impl AstNode {
     }
 
     #[inline]
-    pub(crate) fn fn_decl(span: Span, ident: Interned, ty: Option<Ty>, body: NodeId) -> Self {
+    pub(crate) fn fn_decl(span: Span, ident: Interned, ty: Option<NodeId>, body: NodeId) -> Self {
         Self::new(span, AstNodeKind::fn_decl(ident, ty, body))
     }
 
@@ -90,6 +90,11 @@ impl AstNode {
     ) -> Self {
         Self::new(span, AstNodeKind::if_expr(cond, then_expr, else_expr))
     }
+
+    #[inline]
+    pub(crate) fn ty(span: Span, ty: Ty) -> Self {
+        Self::new(span, AstNodeKind::ty(ty))
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -102,11 +107,12 @@ pub enum AstNodeKind {
     Chain(NodeId, NodeId),
     VariantInst(NodeId, Option<NodeId>),
     IfExpr(NodeId, NodeId, Option<NodeId>),
+    Ty(Ty),
 }
 
 impl AstNodeKind {
     #[inline]
-    pub fn fn_decl(ident: Interned, ty: Option<Ty>, body: NodeId) -> Self {
+    pub fn fn_decl(ident: Interned, ty: Option<NodeId>, body: NodeId) -> Self {
         Self::FnDecl(FnDecl { ident, ty, body })
     }
 
@@ -144,12 +150,17 @@ impl AstNodeKind {
     pub fn if_expr(cond: NodeId, then_expr: NodeId, else_expr: Option<NodeId>) -> Self {
         Self::IfExpr(cond, then_expr, else_expr)
     }
+
+    #[inline]
+    pub fn ty(ty: Ty) -> Self {
+        Self::Ty(ty)
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
 pub struct FnDecl {
     pub ident: Interned,
-    pub ty: Option<Ty>,
+    pub ty: Option<NodeId>,
     pub body: NodeId,
 }
 
@@ -160,18 +171,21 @@ pub struct FnCall {
 }
 
 #[derive(Debug, Eq, PartialEq)]
-pub struct Ty {
-    pub span: Span,
-    pub kind: TyKind,
-}
-
-#[derive(Debug, Eq, PartialEq)]
-pub enum TyKind {
+pub enum Ty {
     Never,
     Void,
     Uint(usize),
     Int(usize),
     Float(usize),
+    Path(NodeId),
+    Pointer(NodeId),
+    Reference(NodeId),
+    Array {
+        ty: NodeId,
+        count: Option<NodeId>,
+        terminator: Option<NodeId>,
+    },
+    Slice(NodeId),
     Other(NodeId),
 }
 

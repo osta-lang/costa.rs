@@ -1,8 +1,8 @@
-use crate::expr::parse_block;
+use crate::expr::{parse_block, parse_expr};
 use crate::path::{continue_path, parse_ident};
-use crate::util::{expect, next};
+use crate::util::{expect, next, peek};
 use crate::{ParseResult, ParserError};
-use osta_ast::ast::{Ty, TyKind};
+use osta_ast::ast::Ty;
 use osta_ast::{AstBuilder, NodeId};
 use osta_lexer::{Lexer, Token, TokenKind};
 use osta_session::Session;
@@ -41,22 +41,72 @@ pub fn parse_type<'src>(
     session: Arc<Mutex<Session>>,
     lexer: &mut Lexer<'src>,
     builder: &mut AstBuilder,
-) -> ParseResult<(Ty, Span)> {
-    let (ty, span) = match next(lexer)? {
-        Some(Token { kind: TokenKind::Never, span }) => (TyKind::Never, span),
-        Some(Token { kind: TokenKind::Void, span }) => (TyKind::Void, span),
-        Some(Token { kind: TokenKind::UintType(size), span }) => (TyKind::Uint(size), span),
-        Some(Token { kind: TokenKind::IntType(size), span }) => (TyKind::Int(size), span),
-        Some(Token { kind: TokenKind::FloatType(size), span }) => (TyKind::Float(size), span),
+) -> ParseResult {
+    let ty = match next(lexer)? {
+        Some(Token { kind: TokenKind::Never, span }) => {
+            (builder.add_type(span.clone(), Ty::Never), span)
+        }
+        Some(Token { kind: TokenKind::Void, span }) => {
+            (builder.add_type(span.clone(), Ty::Void), span)
+        }
+        Some(Token { kind: TokenKind::UintType(size), span }) => {
+            (builder.add_type(span.clone(), Ty::Uint(size)), span)
+        }
+        Some(Token { kind: TokenKind::IntType(size), span }) => {
+            (builder.add_type(span.clone(), Ty::Int(size)), span)
+        }
+        Some(Token { kind: TokenKind::FloatType(size), span }) => {
+            (builder.add_type(span.clone(), Ty::Float(size)), span)
+        }
         Some(Token { kind: TokenKind::Identifier, span }) => {
             let (path_id, span) = continue_path(session, lexer, builder, span)?;
-            (TyKind::Other(path_id), span)
+            (builder.add_type(span.clone(), Ty::Path(path_id)), span)
+        }
+        Some(Token { kind: TokenKind::Ampersand, span }) => {
+            let (ty, span_next) = parse_type(session, lexer, builder)?;
+            (
+                builder.add_type(span.clone(), Ty::Reference(ty)),
+                Span::new(span.start, span_next.end),
+            )
+        }
+        Some(Token { kind: TokenKind::Star, span }) => {
+            let (ty, span_next) = parse_type(session, lexer, builder)?;
+            (
+                builder.add_type(span.clone(), Ty::Pointer(ty)),
+                Span::new(span.start, span_next.end),
+            )
+        }
+        Some(Token { kind: TokenKind::LBracket, span }) => {
+            let (ty, _) = parse_type(session.clone(), lexer, builder)?;
+
+            let count = if let Some(Token { kind: TokenKind::Semicolon, .. }) = peek(lexer)? {
+                next(lexer)?;
+                let (number, _) = parse_expr(session.clone(), lexer, builder, 0)?;
+                Some(number)
+            } else {
+                None
+            };
+
+            let terminator = if let Some(Token { kind: TokenKind::Colon, .. }) = peek(lexer)? {
+                next(lexer)?;
+                let (terminator, _) = parse_expr(session, lexer, builder, 0)?;
+                Some(terminator)
+            } else {
+                None
+            };
+
+            let Token { span: rb_span, .. } = expect(lexer, TokenKind::RBracket)?;
+
+            (
+                builder.add_type(span.clone(), Ty::Array { ty, count, terminator }),
+                Span::new(span.start, rb_span.end),
+            )
         }
         Some(Token { kind, span }) => {
             return Err(ParserError::InvalidType { found: kind, span });
         }
         None => return Err(ParserError::UnexpectedEof),
     };
-    let ty = Ty { span: span.clone(), kind: ty };
-    Ok((ty, span))
+
+    Ok(ty)
 }

@@ -45,7 +45,12 @@ impl AstBuilder {
         self.add_node(node)
     }
 
-    pub fn add_fn_call(&mut self, span: Span, path_id: NodeId, first_arg_id: NodeId) -> NodeId {
+    pub fn add_fn_call(
+        &mut self,
+        span: Span,
+        path_id: NodeId,
+        first_arg_id: Option<NodeId>,
+    ) -> NodeId {
         let node = AstNode::fn_call(span, path_id, first_arg_id);
         self.add_node(node)
     }

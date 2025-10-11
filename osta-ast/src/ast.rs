@@ -52,7 +52,7 @@ impl AstNode {
     }
 
     #[inline]
-    pub(crate) fn fn_call(span: Span, path_id: NodeId, first_arg_id: NodeId) -> Self {
+    pub(crate) fn fn_call(span: Span, path_id: NodeId, first_arg_id: Option<NodeId>) -> Self {
         Self::new(span, AstNodeKind::fn_call(path_id, first_arg_id))
     }
 
@@ -111,7 +111,7 @@ impl AstNodeKind {
     }
 
     #[inline]
-    pub fn fn_call(path_id: NodeId, first_arg_id: NodeId) -> Self {
+    pub fn fn_call(path_id: NodeId, first_arg_id: Option<NodeId>) -> Self {
         Self::FnCall(FnCall { path_id, first_arg_id })
     }
 
@@ -156,7 +156,7 @@ pub struct FnDecl {
 #[derive(Debug, Eq, PartialEq)]
 pub struct FnCall {
     pub path_id: NodeId,
-    pub first_arg_id: NodeId,
+    pub first_arg_id: Option<NodeId>,
 }
 
 #[derive(Debug, Eq, PartialEq)]

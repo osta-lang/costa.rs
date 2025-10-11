@@ -21,7 +21,7 @@ pub fn parse_expr<'src>(
                 $((stringify!($path), $op_span.clone())),+
             ]);
             let span = $op_span.join(&rhs_span);
-            let node = $builder.add_fn_call(span.clone(), path, rhs);
+            let node = $builder.add_fn_call(span.clone(), path, Some(rhs));
             (node, span)
         }};
     }
@@ -36,7 +36,7 @@ pub fn parse_expr<'src>(
                 $((stringify!($path), $lhs.1.clone())),+
             ]);
             let span = $lhs.1.join(&span);
-            let node = $builder.add_fn_call(span.clone(), path, $lhs.0);
+            let node = $builder.add_fn_call(span.clone(), path, Some($lhs.0));
             (node, span)
         }};
     }
@@ -55,7 +55,7 @@ pub fn parse_expr<'src>(
             ]);
             let span = $lhs.1.join(&rhs_span);
             let args = $builder.add_chain(span.clone(), $lhs.0, rhs);
-            let node = $builder.add_fn_call(span.clone(), path, args);
+            let node = $builder.add_fn_call(span.clone(), path, Some(args));
             (node, span)
         }};
     }
@@ -184,7 +184,7 @@ pub fn parse_expr<'src>(
                         }
                         _ => {
                             let some_path = crate::path::create_path(
-                                (session.clone()),
+                                session.clone(),
                                 builder,
                                 [
                                     ("core", lhs.1.clone()),
@@ -194,7 +194,7 @@ pub fn parse_expr<'src>(
                                 ],
                             );
                             let none_path = crate::path::create_path(
-                                (session.clone()),
+                                session.clone(),
                                 builder,
                                 [
                                     ("core", lhs.1.clone()),
@@ -218,7 +218,7 @@ pub fn parse_expr<'src>(
                     }
                 } else {
                     let path = crate::path::create_path(
-                        (session.clone()),
+                        session.clone(),
                         builder,
                         [
                             ("core", lhs.1.clone()),
@@ -228,7 +228,7 @@ pub fn parse_expr<'src>(
                         ],
                     );
                     let span = lhs.1.join(&lhs_span);
-                    let node = builder.add_fn_call(span.clone(), path, lhs.0);
+                    let node = builder.add_fn_call(span.clone(), path, Some(lhs.0));
                     (node, span)
                 }
             }

@@ -144,6 +144,15 @@ macro_rules! new_index {
             }
         }
 
+        impl ::std::ops::Sub<$ty> for $name {
+            type Output = Self;
+
+            #[inline]
+            fn sub(self, rhs: $ty) -> Self::Output {
+                Self::from_ty(self.0 - rhs)
+            }
+        }
+
         impl ::std::iter::Step for $name {
             fn steps_between(start: &Self, end: &Self) -> (usize, Option<usize>) {
                 <usize as ::std::iter::Step>::steps_between(

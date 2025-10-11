@@ -1,6 +1,8 @@
 mod expr;
 mod item;
 mod path;
+#[cfg(test)]
+mod tests;
 mod util;
 
 use crate::item::parse_item;

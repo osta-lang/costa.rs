@@ -41,32 +41,54 @@ pub struct AstNode {
 }
 
 impl AstNode {
+    #[inline]
     pub(crate) fn new(span: Span, kind: AstNodeKind) -> Self {
         Self { span, kind }
     }
 
+    #[inline]
     pub(crate) fn fn_decl(span: Span, ident: Interned, ty: Option<Ty>, body: NodeId) -> Self {
         Self::new(span, AstNodeKind::fn_decl(ident, ty, body))
     }
 
+    #[inline]
     pub(crate) fn fn_call(span: Span, path_id: NodeId, first_arg_id: NodeId) -> Self {
         Self::new(span, AstNodeKind::fn_call(path_id, first_arg_id))
     }
 
+    #[inline]
     pub(crate) fn path(span: Span, this: Interned, next: Option<NodeId>) -> Self {
         Self::new(span, AstNodeKind::path(this, next))
     }
 
+    #[inline]
     pub(crate) fn block(span: Span, first_stmt_id: Option<NodeId>) -> Self {
         Self::new(span, AstNodeKind::block(first_stmt_id))
     }
 
+    #[inline]
     pub(crate) fn literal(span: Span, lit: Interned) -> Self {
         Self::new(span, AstNodeKind::literal(lit))
     }
 
+    #[inline]
     pub(crate) fn chain(span: Span, first: NodeId, second: NodeId) -> Self {
         Self::new(span, AstNodeKind::chain(first, second))
+    }
+
+    #[inline]
+    pub(crate) fn variant_inst(span: Span, path_id: NodeId, first_arg_id: Option<NodeId>) -> Self {
+        Self::new(span, AstNodeKind::variant_inst(path_id, first_arg_id))
+    }
+
+    #[inline]
+    pub(crate) fn if_expr(
+        span: Span,
+        cond: NodeId,
+        then_expr: NodeId,
+        else_expr: Option<NodeId>,
+    ) -> Self {
+        Self::new(span, AstNodeKind::if_expr(cond, then_expr, else_expr))
     }
 }
 
@@ -78,31 +100,49 @@ pub enum AstNodeKind {
     Block(Option<NodeId>),
     Literal(Interned),
     Chain(NodeId, NodeId),
+    VariantInst(NodeId, Option<NodeId>),
+    IfExpr(NodeId, NodeId, Option<NodeId>),
 }
 
 impl AstNodeKind {
+    #[inline]
     pub fn fn_decl(ident: Interned, ty: Option<Ty>, body: NodeId) -> Self {
         Self::FnDecl(FnDecl { ident, ty, body })
     }
 
+    #[inline]
     pub fn fn_call(path_id: NodeId, first_arg_id: NodeId) -> Self {
         Self::FnCall(FnCall { path_id, first_arg_id })
     }
 
+    #[inline]
     pub fn path(this: Interned, next: Option<NodeId>) -> Self {
         Self::Path(Path { this, next })
     }
 
+    #[inline]
     pub fn block(first_stmt_id: Option<NodeId>) -> Self {
         Self::Block(first_stmt_id)
     }
 
+    #[inline]
     pub fn literal(lit: Interned) -> Self {
         Self::Literal(lit)
     }
 
+    #[inline]
     pub fn chain(first: NodeId, second: NodeId) -> Self {
         Self::Chain(first, second)
+    }
+
+    #[inline]
+    pub fn variant_inst(path_id: NodeId, first_arg_id: Option<NodeId>) -> Self {
+        Self::VariantInst(path_id, first_arg_id)
+    }
+
+    #[inline]
+    pub fn if_expr(cond: NodeId, then_expr: NodeId, else_expr: Option<NodeId>) -> Self {
+        Self::IfExpr(cond, then_expr, else_expr)
     }
 }
 

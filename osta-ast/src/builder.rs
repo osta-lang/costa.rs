@@ -69,6 +69,27 @@ impl AstBuilder {
         let node = AstNode::chain(span, first, second);
         self.add_node(node)
     }
+
+    pub fn add_variant_inst(
+        &mut self,
+        span: Span,
+        path_id: NodeId,
+        first_arg_id: Option<NodeId>,
+    ) -> NodeId {
+        let node = AstNode::variant_inst(span, path_id, first_arg_id);
+        self.add_node(node)
+    }
+
+    pub fn add_if_expr(
+        &mut self,
+        span: Span,
+        cond: NodeId,
+        then_branch: NodeId,
+        else_branch: Option<NodeId>,
+    ) -> NodeId {
+        let node = AstNode::if_expr(span, cond, then_branch, else_branch);
+        self.add_node(node)
+    }
 }
 
 impl Default for AstBuilder {

@@ -156,9 +156,81 @@ pub fn parse_expr<'src>(
                 postfix_op!(session.clone(), lexer, builder, lhs, 11, core::ops::PostDec::dec)
             }
             Some(Token { kind: TokenKind::Question, .. }) => {
-                // TODO: Option creation (bool ? expr -> if bool Some(expr) else None)
-                // TODO: Ternary operator (bool ? expr1 : expr2 -> if bool expr1 else expr2)
-                postfix_op!(session.clone(), lexer, builder, lhs, 11, core::ops::Try::unwrap)
+                let Token { span: lhs_span, .. } = unsafe { next(lexer)?.unwrap_unchecked() };
+                if 11 < min_bp {
+                    break;
+                }
+
+                let mut lexer_clone = lexer.clone();
+                if let Ok((expr1, expr1_span)) = builder.checkpoint().resolve(parse_expr(
+                    session.clone(),
+                    &mut lexer_clone,
+                    builder,
+                    0,
+                )) {
+                    *lexer = lexer_clone;
+                    match peek(lexer)? {
+                        Some(Token { kind: TokenKind::Colon, .. }) => {
+                            let _ = unsafe { next(lexer)?.unwrap_unchecked() };
+                            lexer_clone = lexer.clone();
+
+                            let (expr2, expr2_span) =
+                                parse_expr(session.clone(), &mut lexer_clone, builder, 0)?;
+
+                            *lexer = lexer_clone;
+                            let span = lhs.1.join(&expr2_span);
+                            let node = builder.add_if_expr(span.clone(), lhs.0, expr1, Some(expr2));
+                            (node, span)
+                        }
+                        _ => {
+                            let some_path = crate::path::create_path(
+                                (session.clone()),
+                                builder,
+                                [
+                                    ("core", lhs.1.clone()),
+                                    ("option", lhs.1.clone()),
+                                    ("Option", lhs.1.clone()),
+                                    ("Some", lhs.1.clone()),
+                                ],
+                            );
+                            let none_path = crate::path::create_path(
+                                (session.clone()),
+                                builder,
+                                [
+                                    ("core", lhs.1.clone()),
+                                    ("option", lhs.1.clone()),
+                                    ("Option", lhs.1.clone()),
+                                    ("None", lhs.1.clone()),
+                                ],
+                            );
+                            let span = lhs.1.join(&expr1_span);
+                            let some_node =
+                                builder.add_variant_inst(span.clone(), some_path, Some(expr1));
+                            let none_node = builder.add_variant_inst(span.clone(), none_path, None);
+                            let node = builder.add_if_expr(
+                                span.clone(),
+                                lhs.0,
+                                some_node,
+                                Some(none_node),
+                            );
+                            (node, span)
+                        }
+                    }
+                } else {
+                    let path = crate::path::create_path(
+                        (session.clone()),
+                        builder,
+                        [
+                            ("core", lhs.1.clone()),
+                            ("ops", lhs.1.clone()),
+                            ("Try", lhs.1.clone()),
+                            ("unwrap", lhs.1.clone()),
+                        ],
+                    );
+                    let span = lhs.1.join(&lhs_span);
+                    let node = builder.add_fn_call(span.clone(), path, lhs.0);
+                    (node, span)
+                }
             }
             Some(Token { kind: TokenKind::Plus, .. }) => {
                 infix_op!(session.clone(), lexer, builder, lhs, 5, 6, core::ops::Addition::add)

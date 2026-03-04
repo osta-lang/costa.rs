@@ -1,6 +1,6 @@
 use crate::expr::parse_expr;
 use crate::item::parse_type;
-use crate::util::{advance_if, expect, intern};
+use crate::util::{advance_if, expect, intern, next_if};
 use crate::{try_parse, ParseResult};
 use osta_ast::ast::{Interned, InternedKind};
 use osta_ast::AstBuilder;
@@ -15,6 +15,7 @@ pub fn parse_stmt(
     builder: &mut AstBuilder,
 ) -> ParseResult {
     try_parse!(parse_variable_binding, session, lexer, builder, true)
+        .or_else(|_| try_parse!(parse_expr_stmt, session, lexer, builder))
 }
 
 pub fn parse_stmts(
@@ -66,4 +67,16 @@ pub fn parse_variable_binding(
     let span = Span::new(start, end);
     let node_id = builder.add_variable_binding(span.clone(), ident, opt_ty, opt_init);
     Ok((node_id, span))
+}
+
+pub fn parse_expr_stmt(
+    session: Arc<Mutex<Session>>,
+    lexer: &mut Lexer,
+    builder: &mut AstBuilder,
+) -> ParseResult {
+    let (expr_id, expr_span) = parse_expr(session, lexer, builder, 0)?;
+    let span = next_if(lexer, TokenKind::Semicolon)?
+        .map(|token| expr_span.join(&token.span))
+        .unwrap_or(expr_span);
+    Ok((expr_id, span))
 }

@@ -40,13 +40,16 @@ pub fn expect_opt<'src>(lexer: &'src mut Lexer, kind: TokenKind) -> ParseResultO
     }
 }
 
-pub fn advance_if(lexer: &mut Lexer, kind: TokenKind) -> ParseResult<bool> {
+pub fn next_if(lexer: &mut Lexer, kind: TokenKind) -> ParseResultOpt<Token> {
     if expect_opt(lexer, kind)?.is_some() {
-        lexer.next();
-        Ok(true)
+        next(lexer)
     } else {
-        Ok(false)
+        Ok(None)
     }
+}
+
+pub fn advance_if(lexer: &mut Lexer, kind: TokenKind) -> ParseResult<bool> {
+    Ok(next_if(lexer, kind)?.is_some())
 }
 
 pub fn intern<'src>(

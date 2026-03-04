@@ -1,4 +1,5 @@
 use crate::path::continue_path;
+use crate::stmt::parse_stmts;
 use crate::util::{expect, intern, next, peek};
 use crate::{ParseResult, ParserError};
 use osta_ast::ast::InternedKind;
@@ -43,13 +44,15 @@ pub fn parse_expr<'src>(
 
     macro_rules! infix_op {
         ($session:expr, $lexer:expr, $builder:expr, $lhs:ident, $l_bp:literal, $r_bp:literal, $($path:ident)::+) => {{
-            let Token { span, .. } = unsafe { next($lexer)?.unwrap_unchecked() };
+            let mut lexer_clone = $lexer.clone();
+            let Token { span, .. } = unsafe { next(&mut lexer_clone)?.unwrap_unchecked() };
             if $l_bp < min_bp {
                 break;
             } else if $l_bp == min_bp {
                 return Err(ParserError::AmbiguousOperator { span });
             }
-            let (rhs, rhs_span) = parse_expr($session, $lexer, $builder, $r_bp)?;
+            let (rhs, rhs_span) = $builder.checkpoint().resolve(parse_expr($session, &mut lexer_clone, $builder, $r_bp))?;
+            *$lexer = lexer_clone;
             let path = $crate::path::create_path($session, $builder, [
                 $((stringify!($path), span.clone())),+
             ]);
@@ -313,10 +316,10 @@ pub fn parse_block<'src>(
     builder: &mut AstBuilder,
 ) -> ParseResult {
     let start = expect(lexer, TokenKind::LBrace)?.span.start;
-    // TODO: parse statements
+    let stmts = parse_stmts(session, lexer, builder, false)?.map(|(node_id, _)| node_id);
     let end = expect(lexer, TokenKind::RBrace)?.span.end;
 
     let span = Span::new(start, end);
-    let node = builder.add_block(span.clone(), None);
+    let node = builder.add_block(span.clone(), stmts);
     Ok((node, span))
 }

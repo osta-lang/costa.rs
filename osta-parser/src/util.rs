@@ -40,6 +40,15 @@ pub fn expect_opt<'src>(lexer: &'src mut Lexer, kind: TokenKind) -> ParseResultO
     }
 }
 
+pub fn advance_if(lexer: &mut Lexer, kind: TokenKind) -> ParseResult<bool> {
+    if expect_opt(lexer, kind)?.is_some() {
+        lexer.next();
+        Ok(true)
+    } else {
+        Ok(false)
+    }
+}
+
 pub fn intern<'src>(
     session: Arc<Mutex<Session>>,
     lexer: &mut Lexer<'src>,

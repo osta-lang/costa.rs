@@ -1,6 +1,6 @@
 use crate::expr::parse_expr;
 use crate::item::parse_type;
-use crate::util::{expect, expect_opt, intern};
+use crate::util::{advance_if, expect, intern};
 use crate::{try_parse, ParseResult, ParseResultOpt};
 use osta_ast::ast::{Interned, InternedKind};
 use osta_ast::AstBuilder;
@@ -56,19 +56,15 @@ pub fn parse_variable_binding(
         let idx = intern(session.clone(), lexer, &span);
         (start, Interned::new(idx, span, InternedKind::Ident))
     };
-    let opt_ty = match expect_opt(lexer, TokenKind::Colon)? {
-        Some(_) => {
-            lexer.next();
-            Some(parse_type(session.clone(), lexer, builder)?.0)
-        }
-        None => None,
+    let opt_ty = if advance_if(lexer, TokenKind::Colon)? {
+        Some(parse_type(session.clone(), lexer, builder)?.0)
+    } else {
+        None
     };
-    let opt_init = match expect_opt(lexer, TokenKind::Equal)? {
-        Some(_) => {
-            lexer.next();
-            Some(parse_expr(session.clone(), lexer, builder, 0)?.0)
-        }
-        None => None,
+    let opt_init = if advance_if(lexer, TokenKind::Equal)? {
+        Some(parse_expr(session.clone(), lexer, builder, 0)?.0)
+    } else {
+        None
     };
     let end = expect(lexer, TokenKind::Semicolon)?.span.end;
 

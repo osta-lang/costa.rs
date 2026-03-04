@@ -1,4 +1,4 @@
-use crate::util::{expect, expect_opt, intern, intern_str, next};
+use crate::util::{advance_if, expect, intern, intern_str, next};
 use crate::{ParseResult, ParserError};
 use osta_ast::ast::{Interned, InternedKind};
 use osta_ast::{AstBuilder, NodeId};
@@ -40,18 +40,15 @@ pub fn parse_path<'src>(
         }
         None => return Err(ParserError::UnexpectedEof),
     };
-    match expect_opt(lexer, TokenKind::DoubleColon)? {
-        Some(_) => {
-            let next = parse_path(session, lexer, builder, false)?.0;
-            let span = ident.span.join(&builder.span_of(next));
-            let node = builder.add_path(span.clone(), ident, Some(next));
-            Ok((node, span))
-        }
-        None => {
-            let span = ident.span.clone();
-            let node = builder.add_path(span.clone(), ident, None);
-            Ok((node, span))
-        }
+    if advance_if(lexer, TokenKind::DoubleColon)? {
+        let next = parse_path(session, lexer, builder, false)?.0;
+        let span = ident.span.join(&builder.span_of(next));
+        let node = builder.add_path(span.clone(), ident, Some(next));
+        Ok((node, span))
+    } else {
+        let span = ident.span.clone();
+        let node = builder.add_path(span.clone(), ident, None);
+        Ok((node, span))
     }
 }
 
@@ -61,17 +58,14 @@ pub fn continue_path<'src>(
     builder: &mut AstBuilder,
     span: Span,
 ) -> ParseResult {
-    match expect_opt(lexer, TokenKind::DoubleColon)? {
-        Some(_) => {
-            let (path_id, path_span) = parse_path(session, lexer, builder, false)?;
-            Ok((path_id, span.join(&path_span)))
-        }
-        _ => {
-            let idx = intern(session, lexer, &span);
-            let ident = Interned::new(idx, span.clone(), InternedKind::Ident);
-            let path_id = builder.add_path(span.clone(), ident, None);
-            Ok((path_id, span))
-        }
+    if advance_if(lexer, TokenKind::DoubleColon)? {
+        let (path_id, path_span) = parse_path(session, lexer, builder, false)?;
+        Ok((path_id, span.join(&path_span)))
+    } else {
+        let idx = intern(session, lexer, &span);
+        let ident = Interned::new(idx, span.clone(), InternedKind::Ident);
+        let path_id = builder.add_path(span.clone(), ident, None);
+        Ok((path_id, span))
     }
 }
 

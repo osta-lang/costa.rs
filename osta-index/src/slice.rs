@@ -58,7 +58,7 @@ impl<I: Idx, T> IndexSlice<I, T> {
     }
 
     #[inline]
-    pub fn indicies(
+    pub fn indices(
         &self,
     ) -> impl DoubleEndedIterator<Item = I> + ExactSizeIterator + Clone + 'static {
         let _ = I::new(self.len()); // OPTIMIZATION HINT

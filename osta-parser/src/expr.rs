@@ -1,7 +1,7 @@
 use crate::path::continue_path;
 use crate::stmt::parse_stmts;
-use crate::util::{expect, intern, next, peek};
-use crate::{ParseResult, ParserError};
+use crate::util::{advance_if, expect, intern, next, peek};
+use crate::{try_parse, ParseResult, ParserError};
 use osta_ast::ast::InternedKind;
 use osta_ast::AstBuilder;
 use osta_lexer::{Lexer, Token, TokenKind};
@@ -15,18 +15,6 @@ pub fn parse_expr<'src>(
     builder: &mut AstBuilder,
     min_bp: u8,
 ) -> ParseResult {
-    macro_rules! prefix_op {
-        ($session:expr, $lexer:expr, $builder:expr, $op_span:ident, $($path:ident)::+) => {{
-            let (rhs, rhs_span) = parse_expr($session, $lexer, $builder, 9)?;
-            let path = $crate::path::create_path($session, $builder, [
-                $((stringify!($path), $op_span.clone())),+
-            ]);
-            let span = $op_span.join(&rhs_span);
-            let node = $builder.add_fn_call(span.clone(), path, Some(rhs));
-            (node, span)
-        }};
-    }
-
     macro_rules! postfix_op {
         ($session:expr, $lexer:expr, $builder:expr, $lhs:ident, $l_bp:literal, $($path:ident)::+) => {{
             let Token { span, .. } = unsafe { next($lexer)?.unwrap_unchecked() };
@@ -63,90 +51,11 @@ pub fn parse_expr<'src>(
         }};
     }
 
-    let mut lhs = match next(lexer)? {
-        Some(Token { kind: TokenKind::LParen, span: lparen_span }) => {
-            let lhs = parse_expr(session.clone(), lexer, builder, 0)?.0;
-            let rparen_span = expect(lexer, TokenKind::RParen)?.span;
-            let span = lparen_span.join(&rparen_span);
-            (lhs, span)
+    let mut lhs = match peek(lexer)? {
+        Some(Token { kind: TokenKind::LBrace, .. }) => {
+            parse_block(session.clone(), lexer, builder)?
         }
-        Some(Token { kind, span }) => match kind {
-            TokenKind::DecInt => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::DecInt);
-                (node, span)
-            }
-            TokenKind::BinInt => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::BinInt);
-                (node, span)
-            }
-            TokenKind::OctInt => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::OctInt);
-                (node, span)
-            }
-            TokenKind::HexInt => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::HexInt);
-                (node, span)
-            }
-            TokenKind::Float => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::Float);
-                (node, span)
-            }
-            TokenKind::IntFloat => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::IntFloat);
-                (node, span)
-            }
-            TokenKind::FloatExp => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::FloatExp);
-                (node, span)
-            }
-            TokenKind::IntExp => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::IntExp);
-                (node, span)
-            }
-            TokenKind::String => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::Str);
-                (node, span)
-            }
-            TokenKind::RawString => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::RawStr);
-                (node, span)
-            }
-            TokenKind::Char => {
-                let idx = intern(session.clone(), lexer, &span);
-                let node = builder.add_literal(span.clone(), idx, InternedKind::Char);
-                (node, span)
-            }
-            TokenKind::Identifier => continue_path(session.clone(), lexer, builder, span)?,
-            TokenKind::Minus => {
-                prefix_op!(session.clone(), lexer, builder, span, core::ops::Neg::neg)
-            }
-            TokenKind::Star => {
-                prefix_op!(session.clone(), lexer, builder, span, core::ops::Deref::deref)
-            }
-            TokenKind::Bang => {
-                prefix_op!(session.clone(), lexer, builder, span, core::ops::LogicalNot::not)
-            }
-            TokenKind::Tilde => {
-                prefix_op!(session.clone(), lexer, builder, span, core::ops::BitNot::not)
-            }
-            TokenKind::DoublePlus => {
-                prefix_op!(session.clone(), lexer, builder, span, core::ops::PreInc::inc)
-            }
-            TokenKind::DoubleMinus => {
-                prefix_op!(session.clone(), lexer, builder, span, core::ops::PreDec::dec)
-            }
-            kind => return Err(ParserError::InvalidPrefixOperator { found: kind, span }),
-        },
+        Some(_) => parse_expr_lhs(session.clone(), lexer, builder)?,
         None => return Err(ParserError::UnexpectedEof),
     };
 
@@ -164,23 +73,15 @@ pub fn parse_expr<'src>(
                     break;
                 }
 
-                let mut lexer_clone = lexer.clone();
-                if let Ok((expr1, expr1_span)) = builder.checkpoint().resolve(parse_expr(
-                    session.clone(),
-                    &mut lexer_clone,
-                    builder,
-                    0,
-                )) {
-                    *lexer = lexer_clone;
+                if let Ok((expr1, expr1_span)) = try_parse!(parse_expr, session, lexer, builder, 0)
+                {
                     match peek(lexer)? {
                         Some(Token { kind: TokenKind::Colon, .. }) => {
                             let _ = unsafe { next(lexer)?.unwrap_unchecked() };
-                            lexer_clone = lexer.clone();
 
                             let (expr2, expr2_span) =
-                                parse_expr(session.clone(), &mut lexer_clone, builder, 0)?;
+                                parse_expr(session.clone(), lexer, builder, 0)?;
 
-                            *lexer = lexer_clone;
                             let span = lhs.1.join(&expr2_span);
                             let node = builder.add_if_expr(span.clone(), lhs.0, expr1, Some(expr2));
                             (node, span)
@@ -306,6 +207,126 @@ pub fn parse_expr<'src>(
             None | Some(_) => break,
         };
     }
+
+    Ok(lhs)
+}
+
+fn parse_expr_lhs<'src>(
+    session: Arc<Mutex<Session>>,
+    lexer: &mut Lexer<'src>,
+    builder: &mut AstBuilder,
+) -> ParseResult {
+    macro_rules! prefix_op {
+        ($session:expr, $lexer:expr, $builder:expr, $op_span:ident, $($path:ident)::+) => {{
+            let (rhs, rhs_span) = parse_expr($session, $lexer, $builder, 9)?;
+            let path = $crate::path::create_path($session, $builder, [
+                $((stringify!($path), $op_span.clone())),+
+            ]);
+            let span = $op_span.join(&rhs_span);
+            let node = $builder.add_fn_call(span.clone(), path, Some(rhs));
+            (node, span)
+        }};
+    }
+
+    let lhs = match next(lexer)? {
+        Some(Token { kind: TokenKind::LParen, span: lparen_span }) => {
+            let lhs = parse_expr(session.clone(), lexer, builder, 0)?.0;
+            let rparen_span = expect(lexer, TokenKind::RParen)?.span;
+            let span = lparen_span.join(&rparen_span);
+            (lhs, span)
+        }
+        Some(Token { kind: TokenKind::If, span: if_span }) => {
+            let cond_id = parse_expr(session.clone(), lexer, builder, 0)?.0;
+            let (then_id, then_span) = parse_expr(session.clone(), lexer, builder, 0)?;
+            let (else_opt, span) = if advance_if(lexer, TokenKind::Else)? {
+                let (else_id, else_span) = try_parse!(parse_expr, session, lexer, builder, 0)?;
+                let span = if_span.join(&else_span);
+                (Some(else_id), span)
+            } else {
+                (None, if_span.join(&then_span))
+            };
+            let node_id = builder.add_if_expr(span.clone(), cond_id, then_id, else_opt);
+            (node_id, span)
+        }
+        Some(Token { kind, span }) => match kind {
+            TokenKind::DecInt => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::DecInt);
+                (node, span)
+            }
+            TokenKind::BinInt => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::BinInt);
+                (node, span)
+            }
+            TokenKind::OctInt => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::OctInt);
+                (node, span)
+            }
+            TokenKind::HexInt => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::HexInt);
+                (node, span)
+            }
+            TokenKind::Float => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::Float);
+                (node, span)
+            }
+            TokenKind::IntFloat => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::IntFloat);
+                (node, span)
+            }
+            TokenKind::FloatExp => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::FloatExp);
+                (node, span)
+            }
+            TokenKind::IntExp => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::IntExp);
+                (node, span)
+            }
+            TokenKind::String => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::Str);
+                (node, span)
+            }
+            TokenKind::RawString => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::RawStr);
+                (node, span)
+            }
+            TokenKind::Char => {
+                let idx = intern(session.clone(), lexer, &span);
+                let node = builder.add_literal(span.clone(), idx, InternedKind::Char);
+                (node, span)
+            }
+            TokenKind::Identifier => continue_path(session.clone(), lexer, builder, span)?,
+            TokenKind::Minus => {
+                prefix_op!(session.clone(), lexer, builder, span, core::ops::Neg::neg)
+            }
+            TokenKind::Star => {
+                prefix_op!(session.clone(), lexer, builder, span, core::ops::Deref::deref)
+            }
+            TokenKind::Bang => {
+                prefix_op!(session.clone(), lexer, builder, span, core::ops::LogicalNot::not)
+            }
+            TokenKind::Tilde => {
+                prefix_op!(session.clone(), lexer, builder, span, core::ops::BitNot::not)
+            }
+            TokenKind::DoublePlus => {
+                prefix_op!(session.clone(), lexer, builder, span, core::ops::PreInc::inc)
+            }
+            TokenKind::DoubleMinus => {
+                prefix_op!(session.clone(), lexer, builder, span, core::ops::PreDec::dec)
+            }
+            kind => return Err(ParserError::InvalidPrefixOperator { found: kind, span }),
+        },
+        None => return Err(ParserError::UnexpectedEof),
+    };
 
     Ok(lhs)
 }

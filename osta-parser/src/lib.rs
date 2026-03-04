@@ -1,10 +1,10 @@
 mod expr;
 mod item;
 mod path;
+mod stmt;
 #[cfg(test)]
 mod tests;
 mod util;
-mod stmt;
 
 use crate::item::parse_item;
 use crate::util::peek;

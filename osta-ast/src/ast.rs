@@ -97,7 +97,12 @@ impl AstNode {
     }
 
     #[inline]
-    pub(crate) fn variable_binding(span: Span, ident: Interned, ty: Option<NodeId>, expr: Option<NodeId>) -> Self {
+    pub(crate) fn variable_binding(
+        span: Span,
+        ident: Interned,
+        ty: Option<NodeId>,
+        expr: Option<NodeId>,
+    ) -> Self {
         Self::new(span, AstNodeKind::variable_binding(ident, ty, expr))
     }
 }

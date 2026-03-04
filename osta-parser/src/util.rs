@@ -31,10 +31,7 @@ pub fn expect(lexer: &mut Lexer, kind: TokenKind) -> ParseResult<Token> {
     }
 }
 
-pub fn expect_opt<'src>(
-    lexer: &'src mut Lexer,
-    kind: TokenKind,
-) -> ParseResultOpt<&'src Token> {
+pub fn expect_opt<'src>(lexer: &'src mut Lexer, kind: TokenKind) -> ParseResultOpt<&'src Token> {
     match lexer.peek() {
         Some(Ok(tok)) if kind == tok.kind => Ok(Some(tok)),
         Some(Ok(_)) => Ok(None),

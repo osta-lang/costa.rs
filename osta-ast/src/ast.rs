@@ -95,6 +95,11 @@ impl AstNode {
     pub(crate) fn ty(span: Span, ty: Ty) -> Self {
         Self::new(span, AstNodeKind::ty(ty))
     }
+
+    #[inline]
+    pub(crate) fn variable_binding(span: Span, ident: Interned, ty: Option<NodeId>, expr: Option<NodeId>) -> Self {
+        Self::new(span, AstNodeKind::variable_binding(ident, ty, expr))
+    }
 }
 
 #[derive(Debug, Eq, PartialEq)]
@@ -108,6 +113,7 @@ pub enum AstNodeKind {
     VariantInst(NodeId, Option<NodeId>),
     IfExpr(NodeId, NodeId, Option<NodeId>),
     Ty(Ty),
+    VariableBinding(VariableBinding),
 }
 
 impl AstNodeKind {
@@ -154,6 +160,11 @@ impl AstNodeKind {
     #[inline]
     pub fn ty(ty: Ty) -> Self {
         Self::Ty(ty)
+    }
+
+    #[inline]
+    pub fn variable_binding(ident: Interned, ty: Option<NodeId>, expr: Option<NodeId>) -> Self {
+        Self::VariableBinding(VariableBinding { ident, ty, expr })
     }
 }
 
@@ -222,4 +233,11 @@ pub enum InternedKind {
     Str,
     RawStr,
     Char,
+}
+
+#[derive(Debug, Eq, PartialEq)]
+pub struct VariableBinding {
+    pub ident: Interned,
+    pub ty: Option<NodeId>,
+    pub expr: Option<NodeId>,
 }

@@ -4,6 +4,7 @@ mod path;
 #[cfg(test)]
 mod tests;
 mod util;
+mod stmt;
 
 use crate::item::parse_item;
 use crate::util::peek;
@@ -35,6 +36,7 @@ pub enum ParserError {
 }
 
 pub type ParseResult<T = (NodeId, Span)> = Result<T, ParserError>;
+pub type ParseResultOpt<T = (NodeId, Span)> = Result<Option<T>, ParserError>;
 
 pub fn parse(session: Arc<Mutex<Session>>, source: &str) -> Result<AST, ParserError> {
     let mut lexer = Lexer::new(source);

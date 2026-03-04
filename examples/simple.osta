@@ -1,1 +1,4 @@
-fn main() -> i32 { }
+fn main() -> i32 {
+    let foo = 3 + 5;
+    let bar = -4 * 7;
+}

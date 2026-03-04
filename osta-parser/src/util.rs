@@ -1,11 +1,11 @@
-use crate::{ParseResult, ParserError};
+use crate::{ParseResult, ParseResultOpt, ParserError};
 use osta_lexer::{Lexer, Token, TokenKind};
 use osta_session::interner::InternId;
 use osta_session::Session;
 use osta_syntax::Span;
 use std::sync::{Arc, Mutex};
 
-pub fn next(lexer: &mut Lexer) -> ParseResult<Option<Token>> {
+pub fn next(lexer: &mut Lexer) -> ParseResultOpt<Token> {
     match lexer.next() {
         Some(Ok(tok)) => Ok(Some(tok)),
         Some(Err(e)) => Err(ParserError::LexerError(e)),
@@ -13,7 +13,7 @@ pub fn next(lexer: &mut Lexer) -> ParseResult<Option<Token>> {
     }
 }
 
-pub fn peek<'src>(lexer: &'src mut Lexer) -> ParseResult<Option<&'src Token>> {
+pub fn peek<'src>(lexer: &'src mut Lexer) -> ParseResultOpt<&'src Token> {
     match lexer.peek() {
         Some(Ok(tok)) => Ok(Some(tok)),
         Some(Err(e)) => Err(ParserError::LexerError(e.clone())),
@@ -34,7 +34,7 @@ pub fn expect(lexer: &mut Lexer, kind: TokenKind) -> ParseResult<Token> {
 pub fn expect_opt<'src>(
     lexer: &'src mut Lexer,
     kind: TokenKind,
-) -> ParseResult<Option<&'src Token>> {
+) -> ParseResultOpt<&'src Token> {
     match lexer.peek() {
         Some(Ok(tok)) if kind == tok.kind => Ok(Some(tok)),
         Some(Ok(_)) => Ok(None),
@@ -56,4 +56,14 @@ pub fn intern<'src>(
 pub fn intern_str(session: Arc<Mutex<Session>>, s: &str) -> InternId {
     let mut session = session.lock().unwrap();
     session.interner.get_or_intern(s)
+}
+
+#[macro_export]
+macro_rules! try_parse {
+    ($func: ident, $session: ident, $lexer: ident, $builder: ident $(,$($tt: tt),+)?) => {{
+        let checkpoint = $builder.checkpoint();
+        let mut lexer_clone = $lexer.clone();
+        let result = $func($session.clone(), &mut lexer_clone, $builder $(,$($tt),+)?);
+        checkpoint.resolve(result).inspect(|_| *$lexer = lexer_clone)
+    }};
 }

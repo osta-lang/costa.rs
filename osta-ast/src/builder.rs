@@ -100,6 +100,11 @@ impl AstBuilder {
         let node = AstNode::ty(span, ty);
         self.add_node(node)
     }
+
+    pub fn add_variable_binding(&mut self, span: Span, ident: Interned, ty: Option<NodeId>, expr: Option<NodeId>) -> NodeId {
+        let node = AstNode::variable_binding(span, ident, ty, expr);
+        self.add_node(node)
+    }
 }
 
 impl Default for AstBuilder {

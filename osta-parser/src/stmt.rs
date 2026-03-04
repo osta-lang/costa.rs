@@ -1,7 +1,7 @@
 use crate::expr::parse_expr;
 use crate::item::parse_type;
 use crate::util::{advance_if, expect, intern};
-use crate::{try_parse, ParseResult, ParseResultOpt};
+use crate::{try_parse, ParseResult};
 use osta_ast::ast::{Interned, InternedKind};
 use osta_ast::AstBuilder;
 use osta_lexer::{Lexer, TokenKind};
@@ -21,20 +21,15 @@ pub fn parse_stmts(
     session: Arc<Mutex<Session>>,
     lexer: &mut Lexer,
     builder: &mut AstBuilder,
-    force: bool,
-) -> ParseResultOpt {
-    let first = match try_parse!(parse_stmt, session, lexer, builder) {
-        Err(e) if force => return Err(e),
-        Ok(first) => first,
-        _ => return Ok(None),
-    };
-    match try_parse!(parse_stmts, session, lexer, builder, false) {
-        Ok(Some(stmts)) => {
-            let span = first.1.join(&stmts.1);
-            let node_id = builder.add_chain(span.clone(), first.0, stmts.0);
-            Ok(Some((node_id, span)))
+) -> ParseResult {
+    let first = parse_stmt(session.clone(), lexer, builder)?;
+    match try_parse!(parse_stmts, session, lexer, builder) {
+        Ok((stmts_id, stmts_span)) => {
+            let span = first.1.join(&stmts_span);
+            let node_id = builder.add_chain(span.clone(), first.0, stmts_id);
+            Ok((node_id, span))
         }
-        _ => Ok(Some(first)),
+        _ => Ok(first),
     }
 }
 

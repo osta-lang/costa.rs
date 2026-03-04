@@ -337,7 +337,9 @@ pub fn parse_block<'src>(
     builder: &mut AstBuilder,
 ) -> ParseResult {
     let start = expect(lexer, TokenKind::LBrace)?.span.start;
-    let stmts = parse_stmts(session, lexer, builder, false)?.map(|(node_id, _)| node_id);
+    let stmts = try_parse!(parse_stmts, session, lexer, builder)
+        .ok()
+        .map(|(node_id, _)| node_id);
     let end = expect(lexer, TokenKind::RBrace)?.span.end;
 
     let span = Span::new(start, end);

@@ -9,7 +9,7 @@ use std::sync::{Arc, Mutex};
 #[test]
 fn simplest() {
     let session = Arc::new(Mutex::new(Session::new()));
-    let src = include_str!("../../examples/simplest.osta");
+    let src = include_str!("../../../examples/simplest.osta");
 
     let ast = parse(session.clone(), src).expect("parse error");
 
@@ -40,7 +40,7 @@ fn simplest() {
 #[test]
 fn simple() {
     let session = Arc::new(Mutex::new(Session::new()));
-    let src = include_str!("../../examples/simple.osta");
+    let src = include_str!("../../../examples/simple.osta");
 
     let ast = parse(session.clone(), src).expect("parse error");
 

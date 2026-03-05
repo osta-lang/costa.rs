@@ -12,16 +12,16 @@ osta-ast.workspace = true
 clap = { version = "4.5.60", features = ["derive"] }
 
 [workspace]
-members = ["osta-ast", "osta-index", "osta-lexer", "osta-parser", "osta-session", "osta-syntax"]
+members = ["crates/osta-ast", "crates/osta-index", "crates/osta-lexer", "crates/osta-parser", "crates/osta-session", "crates/osta-syntax"]
 resolver = "3"
 
 [workspace.dependencies]
-osta-ast = { path = "./osta-ast" }
-osta-index = { path = "./osta-index" }
-osta-lexer = { path = "./osta-lexer" }
-osta-parser = { path = "./osta-parser" }
-osta-session = { path = "./osta-session" }
-osta-syntax = { path = "./osta-syntax" }
+osta-ast = { path = "crates/osta-ast" }
+osta-index = { path = "crates/osta-index" }
+osta-lexer = { path = "crates/osta-lexer" }
+osta-parser = { path = "crates/osta-parser" }
+osta-session = { path = "crates/osta-session" }
+osta-syntax = { path = "crates/osta-syntax" }
 
 thiserror = "2.0.16"
 bumpalo = { version = "3.19.0", features = ["allocator_api"] }

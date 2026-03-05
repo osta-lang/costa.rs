@@ -38,7 +38,7 @@ pub enum ParserError {
 pub type ParseResult<T = (NodeId, Span)> = Result<T, ParserError>;
 pub type ParseResultOpt<T = (NodeId, Span)> = Result<Option<T>, ParserError>;
 
-pub fn parse(session: Arc<Mutex<Session>>, source: &str) -> Result<AST, ParserError> {
+pub fn parse(session: Arc<Mutex<Session>>, source: &str) -> ParseResult<AST> {
     let mut lexer = Lexer::new(source);
     let mut builder = AstBuilder::new();
     parse_root(session, &mut lexer, &mut builder)?;

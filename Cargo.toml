@@ -1,3 +1,16 @@
+[package]
+name = "costa"
+version = "0.1.0"
+edition = "2024"
+
+[dependencies]
+osta-lexer.workspace = true
+osta-parser.workspace = true
+osta-session.workspace = true
+osta-ast.workspace = true
+
+clap = { version = "4.5.60", features = ["derive"] }
+
 [workspace]
 members = ["osta-ast", "osta-index", "osta-lexer", "osta-parser", "osta-session", "osta-syntax"]
 resolver = "3"

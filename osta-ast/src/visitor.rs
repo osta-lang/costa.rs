@@ -11,8 +11,8 @@ pub trait AstVisitor {
 
     fn visit_node(&mut self, ast: &AST, item_id: ItemId, node_id: NodeId) {
         let node = &ast.nodes[node_id];
-        self.accept(ast, item_id, &node.span, &node.kind);
+        self.accept(ast, item_id, node_id, &node.span, &node.kind);
     }
 
-    fn accept(&mut self, ast: &AST, item_id: ItemId, span: &Span, node: &AstNodeKind);
+    fn accept(&mut self, ast: &AST, item_id: ItemId, node_id: NodeId, span: &Span, node: &AstNodeKind);
 }

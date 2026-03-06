@@ -1,8 +1,10 @@
+use osta_alloc::BumpAllocator;
 use osta_session::interner::Interner;
 
 #[test]
 fn interner() {
-    let mut interner = Interner::new();
+    let arena = BumpAllocator::new();
+    let mut interner = Interner::new_in(&arena);
 
     let id1 = interner.get_or_intern("hello");
     let id2 = interner.get_or_intern("world");

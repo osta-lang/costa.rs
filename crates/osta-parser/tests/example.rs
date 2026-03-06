@@ -4,19 +4,15 @@ use osta_parser::parse;
 use osta_session::interner::InternId;
 use osta_session::Session;
 use osta_syntax::Span;
-use std::sync::{Arc, Mutex};
 
 #[test]
 fn simplest() {
-    let session = Arc::new(Mutex::new(Session::new()));
+    let mut session = Session::create();
     let src = include_str!("../../../examples/simplest.osta");
 
-    let ast = parse(session.clone(), src).expect("parse error");
+    let ast = parse(&mut session, src).expect("parse error");
 
-    {
-        let session = session.lock().unwrap();
-        assert_eq!(session.interner.resolve(InternId::START), "main");
-    }
+    assert_eq!(session.resolve_intern(InternId::START), "main");
     assert_eq!(ast[ItemId::START], NodeId::from_ty(2));
     let fn_node = &ast[NodeId::from_ty(2)];
     assert_eq!(fn_node.span, Span::new(0, 20));
@@ -39,15 +35,12 @@ fn simplest() {
 
 #[test]
 fn simple() {
-    let session = Arc::new(Mutex::new(Session::new()));
+    let mut session = Session::create();
     let src = include_str!("../../../examples/simple.osta");
 
-    let ast = parse(session.clone(), src).expect("parse error");
+    let ast = parse(&mut session, src).expect("parse error");
 
-    {
-        let session = session.lock().unwrap();
-        assert_eq!(session.interner.resolve(InternId::START), "main");
-    }
+    assert_eq!(session.resolve_intern(InternId::START), "main");
     assert_eq!(ast[ItemId::START], NodeId::from_ty(26));
     let fn_node = &ast[NodeId::from_ty(26)];
     assert_eq!(fn_node.span, Span::new(0, 66));

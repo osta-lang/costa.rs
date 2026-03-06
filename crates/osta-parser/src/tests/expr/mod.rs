@@ -4,16 +4,15 @@ use osta_ast::{AstBuilder, NodeId};
 use osta_lexer::Lexer;
 use osta_session::Session;
 use osta_syntax::Span;
-use std::sync::{Arc, Mutex};
 
 mod unary;
 
 #[test]
 fn simple() {
-    let session = Arc::new(Mutex::new(Session::new()));
+    let mut session = Session::create();
     let mut lexer = Lexer::new("-4 * 7");
     let mut builder = AstBuilder::new();
-    let (idx, span) = crate::expr::parse_expr(session.clone(), &mut lexer, &mut builder, 0)
+    let (idx, span) = crate::expr::parse_expr(&mut session, &mut lexer, &mut builder, 0)
         .expect("failed to parse");
     let ast = builder.build();
 

@@ -4,8 +4,8 @@
 
 pub mod ast;
 pub mod builder;
-pub mod visitor;
 pub mod debug;
+pub mod visitor;
 
 pub use ast::{AstNode, NodeId, AST};
 pub use builder::AstBuilder;

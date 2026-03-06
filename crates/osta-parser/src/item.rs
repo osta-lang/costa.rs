@@ -1,16 +1,15 @@
 use crate::expr::{parse_block, parse_expr};
 use crate::path::{continue_path, parse_ident};
 use crate::util::{expect, next, peek};
-use crate::{ParseResult, ParserError};
+use crate::{err, ParseResult, ParserError};
 use osta_ast::ast::Ty;
 use osta_ast::{AstBuilder, NodeId};
 use osta_lexer::{Lexer, Token, TokenKind};
 use osta_session::Session;
 use osta_syntax::Span;
-use std::sync::{Arc, Mutex};
 
 pub fn parse_item<'src>(
-    session: Arc<Mutex<Session>>,
+    session: &mut Session,
     lexer: &mut Lexer<'src>,
     builder: &mut AstBuilder,
 ) -> ParseResult<NodeId> {
@@ -18,16 +17,16 @@ pub fn parse_item<'src>(
 }
 
 pub fn parse_fn_decl<'src>(
-    session: Arc<Mutex<Session>>,
+    session: &mut Session,
     lexer: &mut Lexer<'src>,
     builder: &mut AstBuilder,
 ) -> ParseResult {
     let start = expect(lexer, TokenKind::Fn)?.span.start;
-    let ident = parse_ident(session.clone(), lexer)?;
+    let ident = parse_ident(session, lexer)?;
     let _ = expect(lexer, TokenKind::LParen)?;
     let _ = expect(lexer, TokenKind::RParen)?;
     let _ = expect(lexer, TokenKind::Arrow)?;
-    let ty = parse_type(session.clone(), lexer, builder)?.0;
+    let ty = parse_type(session, lexer, builder)?.0;
     let (body, block_span) = parse_block(session, lexer, builder)?;
     let end = block_span.end;
 
@@ -38,7 +37,7 @@ pub fn parse_fn_decl<'src>(
 }
 
 pub fn parse_type<'src>(
-    session: Arc<Mutex<Session>>,
+    session: &mut Session,
     lexer: &mut Lexer<'src>,
     builder: &mut AstBuilder,
 ) -> ParseResult {
@@ -77,11 +76,11 @@ pub fn parse_type<'src>(
             )
         }
         Some(Token { kind: TokenKind::LBracket, span }) => {
-            let (ty, _) = parse_type(session.clone(), lexer, builder)?;
+            let (ty, _) = parse_type(session, lexer, builder)?;
 
             let count = if let Some(Token { kind: TokenKind::Semicolon, .. }) = peek(lexer)? {
                 next(lexer)?;
-                let (number, _) = parse_expr(session.clone(), lexer, builder, 0)?;
+                let (number, _) = parse_expr(session, lexer, builder, 0)?;
                 Some(number)
             } else {
                 None
@@ -103,9 +102,9 @@ pub fn parse_type<'src>(
             )
         }
         Some(Token { kind, span }) => {
-            return Err(ParserError::InvalidType { found: kind, span });
+            return err!(ParserError::InvalidType { found: kind, span });
         }
-        None => return Err(ParserError::UnexpectedEof),
+        None => return err!(ParserError::UnexpectedEof),
     };
 
     Ok(ty)

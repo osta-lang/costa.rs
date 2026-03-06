@@ -1,10 +1,9 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use osta_ast::debug::AstPrinter;
+use osta_lexer::Lexer;
 use osta_parser::parse;
 use osta_session::Session;
 use std::path::PathBuf;
-use std::sync::{Arc, Mutex};
-use osta_lexer::Lexer;
 
 #[derive(Parser, Debug)]
 #[command(version, about)]
@@ -23,7 +22,7 @@ struct NoBuildArgs {
     input_file: PathBuf,
 
     #[clap(short, long)]
-    #[arg(value_enum, value_delimiter=',', default_value="tokens,ast/dot")]
+    #[arg(value_enum, value_delimiter = ',', default_value = "tokens,ast/dot")]
     artifacts: Vec<NoBuildArtifact>,
 }
 
@@ -73,10 +72,9 @@ fn gen_token_stream(source: &str) {
 }
 
 fn gen_ast_dot(source: &str) {
-    let session = Arc::new(Mutex::new(Session::new()));
-    let ast = parse(session.clone(), source).unwrap();
+    let mut session = Session::create();
+    let ast = parse(&mut session, source).unwrap();
 
-    let session = session.lock().unwrap();
     let printer = AstPrinter::new(&session, source, &ast);
     println!("{printer}");
 }

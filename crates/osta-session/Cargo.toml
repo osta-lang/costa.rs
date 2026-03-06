@@ -4,6 +4,7 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
+osta-alloc.workspace = true
 osta-index.workspace = true
 
-bumpalo.workspace = true
+ouroboros = "0.18.5"

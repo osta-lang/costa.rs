@@ -1,6 +1,4 @@
-use crate::ast::{
-    AstNodeKind, FnCall, FnDecl, Interned, InternedKind, Path, Ty, VariableBinding,
-};
+use crate::ast::{AstNodeKind, FnCall, FnDecl, Interned, InternedKind, Path, Ty, VariableBinding};
 use crate::{NodeId, AST};
 use osta_index::Idx;
 use osta_session::interner::InternId;
@@ -19,7 +17,7 @@ impl<'sess, 'src, 'ast> AstPrinter<'sess, 'src, 'ast> {
     }
 
     fn resolve(&self, id: InternId) -> &'sess str {
-        self.session.interner.resolve(id)
+        self.session.resolve_intern(id)
     }
 
     fn slice(&self, node_id: NodeId) -> &'src str {
@@ -217,7 +215,7 @@ fn get_path(session: &Session, ast: &AST, path_id: NodeId) -> String {
             }
             _ => unreachable!(),
         };
-        let this = session.interner.resolve(this);
+        let this = session.resolve_intern(this);
         if name.is_empty() {
             name = this.to_string();
         } else {

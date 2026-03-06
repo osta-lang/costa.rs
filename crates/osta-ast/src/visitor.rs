@@ -14,5 +14,12 @@ pub trait AstVisitor {
         self.accept(ast, item_id, node_id, &node.span, &node.kind);
     }
 
-    fn accept(&mut self, ast: &AST, item_id: ItemId, node_id: NodeId, span: &Span, node: &AstNodeKind);
+    fn accept(
+        &mut self,
+        ast: &AST,
+        item_id: ItemId,
+        node_id: NodeId,
+        span: &Span,
+        node: &AstNodeKind,
+    );
 }

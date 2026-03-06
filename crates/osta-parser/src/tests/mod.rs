@@ -2,10 +2,7 @@ mod expr;
 
 macro_rules! assert_path {
     ($session:expr, $ast:expr, $idx:expr, $span:expr, $path:ident) => {
-        let interned = {
-            let mut session = $session.lock().unwrap();
-            session.interner.get_or_intern(stringify!($path))
-        };
+        let interned = $session.get_or_intern(stringify!($path));
         let interned = Interned {
             idx: interned,
             span: $span.clone(),
@@ -21,10 +18,7 @@ macro_rules! assert_path {
         }
     };
     ($session:expr, $ast:expr, $idx:expr, $span:expr, $path:ident :: $($rest:ident)::+) => {
-        let interned = {
-            let mut session = $session.lock().unwrap();
-            session.interner.get_or_intern(stringify!($path))
-        };
+        let interned = $session.get_or_intern(stringify!($path));
         let interned = Interned {
             idx: interned,
             span: $span.clone(),

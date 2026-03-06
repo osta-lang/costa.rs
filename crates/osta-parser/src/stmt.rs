@@ -1,29 +1,30 @@
 use crate::expr::parse_expr;
 use crate::item::parse_type;
 use crate::util::{advance_if, expect, intern, next_if};
-use crate::{try_parse, ParseResult};
+use crate::{choice, try_parse, ParseResult};
 use osta_ast::ast::{Interned, InternedKind};
 use osta_ast::AstBuilder;
 use osta_lexer::{Lexer, TokenKind};
 use osta_session::Session;
 use osta_syntax::Span;
-use std::sync::{Arc, Mutex};
 
 pub fn parse_stmt(
-    session: Arc<Mutex<Session>>,
+    session: &mut Session,
     lexer: &mut Lexer,
     builder: &mut AstBuilder,
 ) -> ParseResult {
-    try_parse!(parse_variable_binding, session, lexer, builder, true)
-        .or_else(|_| try_parse!(parse_expr_stmt, session, lexer, builder))
+    choice!(
+        parse_variable_binding, session, lexer, builder, true;
+        parse_expr_stmt, session, lexer, builder;
+    )
 }
 
 pub fn parse_stmts(
-    session: Arc<Mutex<Session>>,
+    session: &mut Session,
     lexer: &mut Lexer,
     builder: &mut AstBuilder,
 ) -> ParseResult {
-    let first = parse_stmt(session.clone(), lexer, builder)?;
+    let first = parse_stmt(session, lexer, builder)?;
     match try_parse!(parse_stmts, session, lexer, builder) {
         Ok((stmts_id, stmts_span)) => {
             let span = first.1.join(&stmts_span);
@@ -35,7 +36,7 @@ pub fn parse_stmts(
 }
 
 pub fn parse_variable_binding(
-    session: Arc<Mutex<Session>>,
+    session: &mut Session,
     lexer: &mut Lexer,
     builder: &mut AstBuilder,
     with_let: bool,
@@ -49,16 +50,16 @@ pub fn parse_variable_binding(
             let span = expect(lexer, TokenKind::Identifier)?.span;
             (span.start, span)
         };
-        let idx = intern(session.clone(), lexer, &span);
+        let idx = intern(session, lexer, &span);
         (start, Interned::new(idx, span, InternedKind::Ident))
     };
     let opt_ty = if advance_if(lexer, TokenKind::Colon)? {
-        Some(parse_type(session.clone(), lexer, builder)?.0)
+        Some(parse_type(session, lexer, builder)?.0)
     } else {
         None
     };
     let opt_init = if advance_if(lexer, TokenKind::Equal)? {
-        Some(parse_expr(session.clone(), lexer, builder, 0)?.0)
+        Some(parse_expr(session, lexer, builder, 0)?.0)
     } else {
         None
     };
@@ -70,7 +71,7 @@ pub fn parse_variable_binding(
 }
 
 pub fn parse_expr_stmt(
-    session: Arc<Mutex<Session>>,
+    session: &mut Session,
     lexer: &mut Lexer,
     builder: &mut AstBuilder,
 ) -> ParseResult {

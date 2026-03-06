@@ -6,14 +6,13 @@ mod unary {
     use osta_session::interner::InternId;
     use osta_session::Session;
     use osta_syntax::Span;
-    use std::sync::{Arc, Mutex};
 
     #[test]
     fn minus() {
-        let session = Arc::new(Mutex::new(Session::new()));
+        let mut session = Session::create();
         let mut lexer = Lexer::new("-1");
         let mut builder = AstBuilder::new();
-        let (idx, span) = crate::expr::parse_expr(session.clone(), &mut lexer, &mut builder, 0)
+        let (idx, span) = crate::expr::parse_expr(&mut session, &mut lexer, &mut builder, 0)
             .expect("failed to parse");
         let ast = builder.build();
 

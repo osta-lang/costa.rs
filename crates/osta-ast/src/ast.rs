@@ -47,8 +47,14 @@ impl AstNode {
     }
 
     #[inline]
-    pub(crate) fn fn_decl(span: Span, ident: Interned, ty: Option<NodeId>, body: NodeId) -> Self {
-        Self::new(span, AstNodeKind::fn_decl(ident, ty, body))
+    pub(crate) fn fn_decl(
+        span: Span,
+        ident: Interned,
+        args: Option<NodeId>,
+        ty: Option<NodeId>,
+        body: NodeId,
+    ) -> Self {
+        Self::new(span, AstNodeKind::fn_decl(ident, args, ty, body))
     }
 
     #[inline]
@@ -123,8 +129,13 @@ pub enum AstNodeKind {
 
 impl AstNodeKind {
     #[inline]
-    pub fn fn_decl(ident: Interned, ty: Option<NodeId>, body: NodeId) -> Self {
-        Self::FnDecl(FnDecl { ident, ty, body })
+    pub fn fn_decl(
+        ident: Interned,
+        args: Option<NodeId>,
+        ty: Option<NodeId>,
+        body: NodeId,
+    ) -> Self {
+        Self::FnDecl(FnDecl { ident, args, ty, body })
     }
 
     #[inline]
@@ -176,6 +187,7 @@ impl AstNodeKind {
 #[derive(Debug, Eq, PartialEq)]
 pub struct FnDecl {
     pub ident: Interned,
+    pub args: Option<NodeId>,
     pub ty: Option<NodeId>,
     pub body: NodeId,
 }

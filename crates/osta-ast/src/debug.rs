@@ -35,7 +35,15 @@ impl<'sess, 'src, 'ast> AstPrinter<'sess, 'src, 'ast> {
                 let path = get_path(self.session, self.ast, *path_id);
                 first_arg_id
                     .map(|arg| get_call_args(self.ast, arg, self.source))
-                    .map(|args| format!("FnCall : {path}({args})"))
+                    .map(|args| format!("{path}({args})"))
+                    .map(|text| {
+                        if text.contains("\n") {
+                            "<multiline>".to_string()
+                        } else {
+                            text
+                        }
+                    })
+                    .map(|text| format!("FnCall : {text}"))
                     .unwrap_or_else(|| format!("FnCall : {path}"))
             }
             AstNodeKind::Path(Path { this, .. }) => {
@@ -83,7 +91,13 @@ impl<'sess, 'src, 'ast> AstPrinter<'sess, 'src, 'ast> {
             }
         };
 
-        writeln!(f, "{} [label=\"[{}] {}\"]", node_id.index(), node.span, name)
+        writeln!(
+            f,
+            "{} [label=\"[{}] {}\"]",
+            node_id.index(),
+            node.span,
+            name.replace('"', r#"\""#)
+        )
     }
 }
 

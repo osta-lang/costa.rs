@@ -1,0 +1,10 @@
+fn @dbg(ty: Type) -> std::comptime::Tokens {
+    ::std::comptime::@tokenize({
+        ::std::io::@println("{:#?}", ty);
+        ty
+    })
+}
+
+fn main() -> i32 {
+    @dbg(0)
+}

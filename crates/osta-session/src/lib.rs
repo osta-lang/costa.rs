@@ -20,7 +20,7 @@ pub struct Session {
     pub sta: ShortTermAllocator,
 
     #[borrows(sta)]
-    #[covariant]
+    #[not_covariant]
     pub interner: Interner<'this, BumpAllocator>,
 }
 

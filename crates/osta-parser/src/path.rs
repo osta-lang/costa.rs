@@ -7,7 +7,10 @@ use osta_session::Session;
 use osta_syntax::Span;
 
 pub fn parse_ident(session: &mut Session, lexer: &mut Lexer) -> ParseResult<Interned> {
-    let tok = expect_one_of!(lexer, TokenKind::Identifier | TokenKind::ComptimeIdentifier)?;
+    let tok = expect_one_of!(
+        lexer,
+        TokenKind::Identifier | TokenKind::MacroIdentifier | TokenKind::ComptimeIdentifier
+    )?;
     let idx = intern(session, lexer, &tok.span);
 
     Ok(Interned::new(idx, tok.span, InternedKind::Ident))

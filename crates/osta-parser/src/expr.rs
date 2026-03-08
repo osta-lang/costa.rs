@@ -1,8 +1,8 @@
-use crate::path::continue_path;
+use crate::path::{continue_path, parse_path};
 use crate::stmt::parse_stmts;
-use crate::util::{advance_if, expect, intern, next, peek};
-use crate::{err, try_parse, ParseResult, ParserError};
-use osta_ast::ast::InternedKind;
+use crate::util::{advance_if, expect, expect_opt, intern, next, peek};
+use crate::{err, try_parse, ParseResult, ParseResultOpt, ParserError};
+use osta_ast::ast::{Interned, InternedKind};
 use osta_ast::AstBuilder;
 use osta_lexer::{Lexer, Token, TokenKind};
 use osta_session::Session;
@@ -58,6 +58,12 @@ pub fn parse_expr<'src>(
 
     loop {
         lhs = match peek(lexer)? {
+            Some(Token { kind: TokenKind::LParen, .. }) => {
+                next(lexer)?;
+                let args = parse_fn_call_args(session, lexer, builder)?.map(|(id, _)| id);
+                let span = lhs.1.join(&expect(lexer, TokenKind::RParen)?.span);
+                (builder.add_fn_call(span.clone(), lhs.0, args), span)
+            }
             Some(Token { kind: TokenKind::DoublePlus, .. }) => {
                 postfix_op!(session, lexer, builder, lhs, 11, core::ops::PostInc::inc)
             }
@@ -293,6 +299,16 @@ fn parse_expr_lhs<'src>(
                 (node, span)
             }
             TokenKind::Identifier => continue_path(session, lexer, builder, span)?,
+            TokenKind::MacroIdentifier | TokenKind::ComptimeIdentifier => {
+                let idx = intern(session, lexer, &span);
+                let interned = Interned::new(idx, span.clone(), InternedKind::Ident);
+                let node = builder.add_path(span.clone(), interned, None);
+                (node, span)
+            }
+            TokenKind::DoubleColon => {
+                let (idx, path_span) = parse_path(session, lexer, builder, false)?;
+                (idx, span.join(&path_span))
+            }
             TokenKind::Minus => {
                 prefix_op!(session, lexer, builder, span, core::ops::Neg::neg)
             }
@@ -333,4 +349,25 @@ pub fn parse_block<'src>(
     let span = Span::new(start, end);
     let node = builder.add_block(span.clone(), stmts);
     Ok((node, span))
+}
+
+fn parse_fn_call_args(
+    session: &mut Session,
+    lexer: &mut Lexer,
+    builder: &mut AstBuilder,
+) -> ParseResultOpt {
+    if expect_opt(lexer, TokenKind::RParen)?.is_some() {
+        return Ok(None);
+    }
+
+    let first = parse_expr(session, lexer, builder, 0)?;
+    let out = if advance_if(lexer, TokenKind::Comma)?
+        && let Some(next) = parse_fn_call_args(session, lexer, builder)?
+    {
+        let span = first.1.join(&next.1);
+        (builder.add_chain(span.clone(), first.0, next.0), span)
+    } else {
+        first
+    };
+    Ok(Some(out))
 }

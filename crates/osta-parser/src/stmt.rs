@@ -14,7 +14,7 @@ pub fn parse_stmt(
     builder: &mut AstBuilder,
 ) -> ParseResult {
     choice!(
-        parse_variable_binding, session, lexer, builder, true;
+        parse_variable_binding, session, lexer, builder;
         parse_expr_stmt, session, lexer, builder;
     )
 }
@@ -39,17 +39,10 @@ pub fn parse_variable_binding(
     session: &mut Session,
     lexer: &mut Lexer,
     builder: &mut AstBuilder,
-    with_let: bool,
 ) -> ParseResult {
     let (start, ident) = {
-        let (start, span) = if with_let {
-            let start = expect(lexer, TokenKind::Let)?.span.start;
-            let span = expect(lexer, TokenKind::Identifier)?.span;
-            (start, span)
-        } else {
-            let span = expect(lexer, TokenKind::Identifier)?.span;
-            (span.start, span)
-        };
+        let start = expect(lexer, TokenKind::Let)?.span.start;
+        let span = expect(lexer, TokenKind::Identifier)?.span;
         let idx = intern(session, lexer, &span);
         (start, Interned::new(idx, span, InternedKind::Ident))
     };

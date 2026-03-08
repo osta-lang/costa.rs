@@ -24,6 +24,7 @@ fn simplest() {
                 span: Span::new(3, 7),
                 kind: InternedKind::Ident
             },
+            args: None,
             ty: Some(NodeId::START),
             body: NodeId::START + 1,
         })
@@ -52,6 +53,7 @@ fn simple() {
                 span: Span::new(3, 7),
                 kind: InternedKind::Ident
             },
+            args: None,
             ty: Some(NodeId::START),
             body: NodeId::START + 25,
         })

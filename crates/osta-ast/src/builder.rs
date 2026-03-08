@@ -1,4 +1,4 @@
-use crate::ast::{AstNode, Interned, InternedKind, ItemId, NodeId, Ty};
+use crate::ast::{AstNode, AstNodeKind, Interned, InternedKind, ItemId, NodeId, Ty};
 use crate::AST;
 use osta_index::{Idx, IndexVec};
 use osta_session::interner::InternId;
@@ -22,6 +22,10 @@ impl AstBuilder {
         Checkpoint { idx: self.nodes.next_index(), builder: self }
     }
 
+    pub fn kind_of(&self, id: NodeId) -> &AstNodeKind {
+        &self.nodes[id].kind
+    }
+
     pub fn span_of(&self, id: NodeId) -> Span {
         self.nodes[id].span.clone()
     }
@@ -38,10 +42,11 @@ impl AstBuilder {
         &mut self,
         span: Span,
         ident: Interned,
+        args: Option<NodeId>,
         ty: Option<NodeId>,
         body: NodeId,
     ) -> NodeId {
-        let node = AstNode::fn_decl(span, ident, ty, body);
+        let node = AstNode::fn_decl(span, ident, args, ty, body);
         self.add_node(node)
     }
 

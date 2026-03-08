@@ -1,6 +1,6 @@
 // This is a hello world example in Osta.
 
-$import std::io::@println;
+use std::io::@println;
 
 fn main() {
     @println("Hello World!");

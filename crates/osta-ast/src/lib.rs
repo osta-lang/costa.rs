@@ -1,6 +1,7 @@
 #![allow(internal_features)]
 #![feature(rustc_attrs)]
 #![feature(step_trait)]
+#![feature(allocator_api)]
 
 pub mod ast;
 pub mod builder;

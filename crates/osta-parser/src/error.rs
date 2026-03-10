@@ -1,111 +1,150 @@
-use osta_alloc::{alloc_vec, AllocVec, ErasedAllocator};
 use osta_ast::NodeId;
-use osta_lexer::TokenKind;
-use osta_session::ShortTermAllocator;
+use osta_diagnostic::{Diagnostic, DiagnosticLabeledSpan, Severity};
+use osta_lexer::{LexerError, TokenKind};
 use osta_syntax::Span;
-use std::fmt::{Display, Formatter};
+use std::cell::RefCell;
+use std::fmt::Display;
 use thiserror::Error;
 
+thread_local! {
+    static INTENT_STACK: RefCell<Vec<ParserIntent>> = RefCell::new(Vec::new());
+}
+
+pub(crate) fn push_intent(intent: ParserIntent) {
+    INTENT_STACK.with_borrow_mut(|stack| stack.push(intent));
+}
+
+pub(crate) fn pop_intent() {
+    INTENT_STACK.with_borrow_mut(|stack| stack.pop().unwrap());
+}
+
+#[macro_export]
+macro_rules! scoped_intent {
+    ($intent:expr) => {
+        $crate::error::push_intent($intent);
+        let _deferred_scoped_intent = ::defer_rs::Defer::new(|| $crate::error::pop_intent());
+    };
+}
+
 #[derive(Debug, Error)]
-pub enum ParserError {
+pub enum ParserErrorKind {
     #[error(transparent)]
-    LexerError(#[from] osta_lexer::LexerError),
-    #[error("invalid type: expected a type, found {found:?}")]
-    InvalidType { found: TokenKind, span: Span },
-    #[error(
-        "invalid path: expected an identifier, 'self', 'super', or 'package', found {found:?}"
-    )]
-    InvalidPath { found: TokenKind, span: Span },
-    #[error("invalid prefix operator: expected '-', '*', '!', or '~', found {found:?}")]
-    InvalidPrefixOperator { found: TokenKind, span: Span },
+    LexerError(#[from] LexerError),
+    #[error("unexpected token: fount {found:?}")]
+    UnexpectedToken { found: TokenKind, span: Span },
     #[error("ambiguous operator at the same precedence level")]
     AmbiguousOperator { span: Span },
     #[error("unexpected token: expected {expected:?}, found {found:?}")]
-    UnexpectedToken { expected: TokenKind, found: TokenKind, span: Span },
+    ExpectedToken { expected: TokenKind, found: TokenKind, span: Span },
     #[error("unexpected EOF")]
     UnexpectedEof,
     #[error("{msg}")]
-    CustomError { msg: String, span: Span },
+    CustomError { code: Option<&'static str>, msg: String, span: Span },
+}
+
+#[derive(Debug, Clone)]
+pub enum ParserIntent {
+    TopLevel,
+    FuncDecl,
+    Block,
+    Statement,
+    Expression,
 }
 
 #[derive(Debug, Error)]
-pub struct ErrorList(AllocVec<ParserError, ErasedAllocator<ShortTermAllocator>>);
+#[error("{intent_stack:?}: {kind}")]
+pub struct ParserError {
+    kind: ParserErrorKind,
+    intent_stack: Vec<ParserIntent>,
+}
 
-impl ErrorList {
-    pub fn pair(a: ParserError, b: ParserError, allocator: &ShortTermAllocator) -> Self {
-        ErrorList(alloc_vec!(allocator, [a, b]))
-    }
-
-    pub fn push(mut self, error: ParserError) -> Self {
-        self.0.push(error);
-        self
-    }
-
-    pub fn merge(mut self, mut other: Self) -> Self {
-        if self.0.len() >= other.0.len() {
-            self.0.append(&mut other.0);
-            self
-        } else {
-            other.0.append(&mut self.0);
-            other
-        }
+impl ParserError {
+    pub fn new(kind: ParserErrorKind, intent_stack: Vec<ParserIntent>) -> Self {
+        Self { kind, intent_stack }
     }
 }
 
-impl Display for ErrorList {
-    fn fmt(&self, f: &mut Formatter<'_>) -> std::fmt::Result {
-        writeln!(f, "Multiple errors:")?;
-        for err in &self.0 {
-            writeln!(f, "====================")?;
-            writeln!(f, "{err}")?;
-            writeln!(f, "====================\n")?;
-        }
-        Ok(())
+impl From<ParserErrorKind> for ParserError {
+    fn from(kind: ParserErrorKind) -> Self {
+        let intent_stack = INTENT_STACK.with_borrow_mut(|stack| stack.clone());
+        Self::new(kind, intent_stack)
     }
 }
 
-#[derive(Debug, Error)]
-pub enum ErrorBundle {
-    #[error(transparent)]
-    Single(#[from] ParserError),
-    #[error(transparent)]
-    List(#[from] ErrorList),
-}
-
-impl ErrorBundle {
-    pub fn merge<T>(
-        self,
-        result: ParseResult<T>,
-        allocator: &ShortTermAllocator,
-    ) -> ParseResult<T> {
-        match result {
-            Ok(t) => Ok(t),
-            Err(err) => Err(self.join(err, allocator)),
+impl Diagnostic for ParserError {
+    fn code<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        match &self.kind {
+            ParserErrorKind::LexerError(err) => err.code(),
+            ParserErrorKind::UnexpectedToken { .. } => Some(Box::new("parser::unexpected_token")),
+            ParserErrorKind::AmbiguousOperator { .. } => {
+                Some(Box::new("parser::ambiguous_operator"))
+            }
+            ParserErrorKind::ExpectedToken { .. } => Some(Box::new("parser::expected_token")),
+            ParserErrorKind::UnexpectedEof { .. } => Some(Box::new("parser::unexpected_eof")),
+            ParserErrorKind::CustomError { code, .. } => {
+                Some(Box::new(code.unwrap_or("parser::custom_error")))
+            }
         }
     }
 
-    fn join(self, other: Self, allocator: &ShortTermAllocator) -> Self {
-        match self {
-            ErrorBundle::Single(err) => match other {
-                ErrorBundle::Single(other) => {
-                    ErrorBundle::List(ErrorList::pair(err, other, allocator))
-                }
-                ErrorBundle::List(others) => ErrorBundle::List(others.push(err)),
-            },
-            ErrorBundle::List(errs) => match other {
-                ErrorBundle::Single(other) => ErrorBundle::List(errs.push(other)),
-                ErrorBundle::List(others) => ErrorBundle::List(errs.merge(others)),
-            },
-        }
+    fn severity(&self) -> Option<Severity> {
+        Some(Severity::Error)
+    }
+
+    fn help<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        None
+    }
+
+    fn url<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        None
+    }
+
+    fn labels(&self) -> Option<Box<dyn Iterator<Item = DiagnosticLabeledSpan> + '_>> {
+        let labels = match &self.kind {
+            ParserErrorKind::LexerError(err) => return err.labels(),
+            ParserErrorKind::UnexpectedToken { span, .. } => vec![DiagnosticLabeledSpan::new(
+                Some("Unexpected token".to_string()),
+                span.start,
+                span.len(),
+            )],
+            ParserErrorKind::AmbiguousOperator { span, .. } => vec![DiagnosticLabeledSpan::new(
+                Some("Ambiguous operator".to_string()),
+                span.start,
+                span.len(),
+            )],
+            ParserErrorKind::ExpectedToken { span, expected, found } => {
+                vec![DiagnosticLabeledSpan::new(
+                    Some(format!("Expected {:?} here but got {:?}", expected, found)),
+                    span.start,
+                    span.len(),
+                )]
+            }
+            ParserErrorKind::UnexpectedEof => return None,
+            ParserErrorKind::CustomError { msg, span, .. } => vec![DiagnosticLabeledSpan::new(
+                Some(msg.clone()),
+                span.start,
+                span.len(),
+            )],
+        };
+
+        Some(Box::new(labels.into_iter()))
+    }
+
+    fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn Diagnostic> + 'a>> {
+        None
+    }
+
+    fn diagnostic_source(&self) -> Option<&dyn Diagnostic> {
+        None
     }
 }
 
-pub type ParseResult<T = (NodeId, Span)> = Result<T, ErrorBundle>;
+pub type ParseResult<T = (NodeId, Span)> = osta_diagnostic::Result<T>;
 pub type ParseResultOpt<T = (NodeId, Span)> = ParseResult<Option<T>>;
 
 #[macro_export]
 macro_rules! err {
     ($expr: expr) => {
-        Err($expr.into())
+        Err($crate::error::ParserError::from($expr).into())
     };
 }

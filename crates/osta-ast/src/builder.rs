@@ -139,19 +139,6 @@ impl Checkpoint {
     pub fn commit(self) {
         std::mem::forget(self);
     }
-
-    pub fn resolve<T, E>(self, result: Result<T, E>) -> Result<T, E> {
-        match result {
-            Ok(v) => {
-                self.commit();
-                Ok(v)
-            }
-            Err(e) => {
-                self.rollback();
-                Err(e)
-            }
-        }
-    }
 }
 
 impl Drop for Checkpoint {

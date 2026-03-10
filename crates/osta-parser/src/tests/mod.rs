@@ -1,8 +1,8 @@
 mod expr;
 
 macro_rules! assert_path {
-    ($session:expr, $ast:expr, $idx:expr, $span:expr, $path:ident) => {
-        let interned = $session.get_or_intern(stringify!($path));
+    ($interner:expr, $ast:expr, $idx:expr, $span:expr, $path:ident) => {
+        let interned = $interner.get_or_intern(stringify!($path));
         let interned = Interned {
             idx: interned,
             span: $span.clone(),
@@ -17,8 +17,8 @@ macro_rules! assert_path {
             _ => panic!("expected path, got {:?}", node.kind),
         }
     };
-    ($session:expr, $ast:expr, $idx:expr, $span:expr, $path:ident :: $($rest:ident)::+) => {
-        let interned = $session.get_or_intern(stringify!($path));
+    ($interner:expr, $ast:expr, $idx:expr, $span:expr, $path:ident :: $($rest:ident)::+) => {
+        let interned = $interner.get_or_intern(stringify!($path));
         let interned = Interned {
             idx: interned,
             span: $span.clone(),
@@ -33,7 +33,7 @@ macro_rules! assert_path {
             AstNodeKind::Path(p) => {assert_eq!(p, &path);},
             _ => panic!("expected path, got {:?}", node.kind),
         }
-        assert_path!($session, $ast, $idx - 1u32, $span, $($rest)::+);
+        assert_path!($interner, $ast, $idx - 1u32, $span, $($rest)::+);
     };
 }
 

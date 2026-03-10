@@ -1,4 +1,4 @@
-use crate::LexerError;
+use crate::lexer::LexerErrorKind;
 use logos::Logos;
 use osta_syntax::Span;
 
@@ -16,7 +16,7 @@ impl Token {
 }
 
 #[derive(Logos, Clone, Debug, PartialEq)]
-#[logos(error = LexerError)]
+#[logos(error = LexerErrorKind)]
 #[logos(skip r"[ \t\r\n\f]+")]
 #[logos(subpattern dec_int = r"[0-9]+(_+[0-9]+)*")]
 #[logos(subpattern pos_int = r"0*[1-9][0-9]*")]
@@ -366,7 +366,7 @@ fn lex_line_comment(lexer: &mut logos::Lexer<TokenKind>) -> bool {
     true
 }
 
-fn lex_block_comment(lexer: &mut logos::Lexer<TokenKind>) -> Result<(), LexerError> {
+fn lex_block_comment(lexer: &mut logos::Lexer<TokenKind>) -> Result<(), LexerErrorKind> {
     let mut depth = 1;
     let mut prev = '\0';
 
@@ -387,16 +387,16 @@ fn lex_block_comment(lexer: &mut logos::Lexer<TokenKind>) -> Result<(), LexerErr
         prev = c;
     }
 
-    Err(LexerError::UnterminatedBlockComment)
+    Err(LexerErrorKind::UnterminatedBlockComment)
 }
 
-fn lex_nty(lexer: &mut logos::Lexer<TokenKind>) -> Result<usize, LexerError> {
+fn lex_nty(lexer: &mut logos::Lexer<TokenKind>) -> Result<usize, LexerErrorKind> {
     let slice = lexer.slice();
     let nty = slice[1..].parse::<usize>()?;
     Ok(nty)
 }
 
-fn lex_raw_string(lexer: &mut logos::Lexer<TokenKind>) -> Result<(), LexerError> {
+fn lex_raw_string(lexer: &mut logos::Lexer<TokenKind>) -> Result<(), LexerErrorKind> {
     let hashes = lexer.slice().len() - 2;
     let mut exiting = false;
     let mut escape = false;
@@ -433,5 +433,5 @@ fn lex_raw_string(lexer: &mut logos::Lexer<TokenKind>) -> Result<(), LexerError>
         }
     }
 
-    Err(LexerError::UnterminatedString)
+    Err(LexerErrorKind::UnterminatedString)
 }

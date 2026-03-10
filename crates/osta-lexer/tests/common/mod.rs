@@ -1,7 +1,7 @@
 macro_rules! init_lexer {
     ($src:ident, $lexer:ident, $slice:literal) => {
         let $src = $slice;
-        let mut $lexer = Lexer::new($src);
+        let mut $lexer = ::osta_lexer::Lexer::new($src);
     };
 }
 

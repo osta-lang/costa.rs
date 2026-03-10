@@ -8,6 +8,7 @@ default = ["unicode-identifiers"]
 unicode-identifiers = []
 
 [dependencies]
+osta-diagnostic.workspace = true
 osta-syntax.workspace = true
 thiserror.workspace = true
 

@@ -1,11 +1,11 @@
 [package]
-name = "osta-session"
+name = "osta-diagnostic"
 version = "0.1.0"
 edition = "2024"
 
 [dependencies]
 osta-alloc.workspace = true
-osta-diagnostic.workspace = true
-osta-index.workspace = true
+
+thiserror.workspace = true
 
 miette.workspace = true

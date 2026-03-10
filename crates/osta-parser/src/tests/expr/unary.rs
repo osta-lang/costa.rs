@@ -1,5 +1,6 @@
 mod unary {
     use crate::tests::assert_path;
+    use crate::FileSession;
     use osta_ast::ast::{AstNodeKind, FnCall, Interned, InternedKind, Path};
     use osta_ast::{AstBuilder, NodeId};
     use osta_lexer::Lexer;
@@ -9,11 +10,9 @@ mod unary {
 
     #[test]
     fn minus() {
-        let mut session = Session::create();
-        let mut lexer = Lexer::new("-1");
-        let mut builder = AstBuilder::new();
-        let (idx, span) = crate::expr::parse_expr(&mut session, &mut lexer, &mut builder, 0)
-            .expect("failed to parse");
+        FileSession::start("-1");
+        let (idx, span) = crate::expr::parse_expr(0).expect("failed to parse");
+        let FileSession { builder, mut interner, .. } = FileSession::end();
         let ast = builder.build();
 
         assert_eq!(span, Span::new(0, 2));
@@ -32,7 +31,7 @@ mod unary {
                             InternedKind::DecInt
                         ))
                     );
-                    assert_path!(session, ast, *path_id, Span::new(0, 1), core::ops::Neg::neg);
+                    assert_path!(interner, ast, *path_id, Span::new(0, 1), core::ops::Neg::neg);
                 }
                 _ => panic!(
                     "expected fn call with path_id 4 and first_arg_id START, got {:?}",

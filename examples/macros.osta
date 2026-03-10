@@ -6,5 +6,6 @@ fn @dbg(ty: Type) -> std::comptime::Tokens {
 }
 
 fn main() -> i32 {
+    let a = 1 \\ 2;
     @dbg(0)
 }

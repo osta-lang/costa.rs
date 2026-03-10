@@ -1,8 +1,8 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
 use osta_ast::debug::AstPrinter;
+use osta_diagnostic::RequireSolvingAll;
 use osta_lexer::Lexer;
-use osta_parser::parse;
-use osta_session::Session;
+use osta_parser::{parse, FileSession};
 use std::path::PathBuf;
 
 #[derive(Parser, Debug)]
@@ -34,7 +34,7 @@ enum NoBuildArtifact {
     AstDot,
 }
 
-fn main() {
+fn main() -> miette::Result<()> {
     let args = Cli::parse();
 
     match args.command {
@@ -42,17 +42,19 @@ fn main() {
             let source = std::fs::read_to_string(&input_file).unwrap();
             for artifact in artifacts {
                 match artifact {
-                    NoBuildArtifact::TokenStream => gen_token_stream(&source),
-                    NoBuildArtifact::AstDot => gen_ast_dot(&source),
+                    NoBuildArtifact::TokenStream => gen_token_stream(&source)?,
+                    NoBuildArtifact::AstDot => gen_ast_dot(&source)?,
                 }
             }
         }
     }
+
+    Ok(())
 }
 
-fn gen_token_stream(source: &str) {
+fn gen_token_stream(source: &str) -> miette::Result<()> {
     let mut string_builder = String::new();
-    let mut valid = true;
+    let mut errors = Vec::new();
     let lexer = Lexer::new(source);
     for entry in lexer {
         match entry {
@@ -60,21 +62,27 @@ fn gen_token_stream(source: &str) {
                 string_builder = format!("{string_builder}{token:?}\n");
             }
             Err(e) => {
-                eprintln!("Skipping generation of TokenStream:\n{e:?}");
-                valid = false;
-                break;
+                string_builder = format!("{string_builder}{e:?}\n");
+                errors.push(e.into());
             }
         }
     }
-    if valid {
-        println!("{string_builder}");
+    println!("{string_builder}");
+    if errors.is_empty() {
+        Ok(())
+    } else {
+        Err(RequireSolvingAll::new(errors).into())
     }
 }
 
-fn gen_ast_dot(source: &str) {
-    let mut session = Session::create();
-    let ast = parse(&mut session, source).unwrap();
+fn gen_ast_dot(source: &str) -> miette::Result<()> {
+    let FileSession { builder, interner, .. } = parse(source).map_err(|e| {
+        e.with_source_code(miette::NamedSource::new("example.osta", String::from(source)))
+    })?;
+    let ast = builder.build();
 
-    let printer = AstPrinter::new(&session, source, &ast);
+    let printer = AstPrinter::new(&interner, source, &ast);
     println!("{printer}");
+
+    Ok(())
 }

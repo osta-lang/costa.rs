@@ -8,14 +8,14 @@ use std::str::from_utf8_unchecked_mut;
 
 new_index!(pub InternId: u32);
 
-pub struct Interner<'alloc, A: 'alloc + Allocator> {
-    allocator: &'alloc A,
+pub struct Interner<A: Allocator> {
+    allocator: A,
     indices: IndexVec<InternId, NonNull<str>>,
     map: HashMap<&'static str, InternId>,
 }
 
-impl<'alloc, A: 'alloc + Allocator> Interner<'alloc, A> {
-    pub fn new_in(allocator: &'alloc A) -> Self {
+impl<A: Allocator> Interner<A> {
+    pub fn new_in(allocator: A) -> Self {
         Self { allocator, indices: IndexVec::new(), map: HashMap::new() }
     }
 

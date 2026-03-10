@@ -11,16 +11,12 @@ impl BumpAllocator {
     pub fn new() -> Self {
         BumpAllocator(Bump::new())
     }
-
-    pub fn vec<T>(&self) -> AllocVec<T, ErasedAllocator<Self>> {
-        Vec::new_in_allocator(ErasedAllocator::new(self))
-    }
 }
 
 unsafe impl Allocator for BumpAllocator {
     fn allocate(&self, layout: Layout) -> Result<NonNull<[u8]>, AllocError> {
         let bump: &Bump = &self.0;
-        bump.allocate(layout)
+        Allocator::allocate(&bump, layout)
     }
 
     unsafe fn deallocate(&self, ptr: NonNull<u8>, layout: Layout) {
@@ -59,6 +55,20 @@ unsafe impl<A: Allocator> Allocator for ErasedAllocator<A> {
     }
 }
 
+pub trait AllocatorExt: Allocator + Sized {
+    fn allocate<T>(&self) -> Result<NonNull<T>, AllocError> {
+        let layout = Layout::new::<T>();
+        Allocator::allocate(self, layout)
+            .map(|ptr| unsafe { NonNull::new_unchecked(ptr.as_ptr() as *mut T) })
+    }
+
+    fn vec<T>(&self) -> AllocVec<T, ErasedAllocator<Self>> {
+        Vec::new_in_allocator(ErasedAllocator::new(self))
+    }
+}
+
+impl<A: Allocator> AllocatorExt for A {}
+
 pub trait VecExt<T>: Sized {
     fn new_in_allocator<'alloc, A: 'alloc + Allocator>(allocator: A) -> Vec<T, A> {
         Vec::new_in(allocator)
@@ -72,7 +82,7 @@ pub type AllocVec<T, A = Global> = Vec<T, A>;
 #[macro_export]
 macro_rules! alloc_vec {
     ($allocator: expr $(, [])?) => {
-        $allocator.vec()
+        $crate::AllocatorExt::vec($allocator)
     };
     ($allocator: expr, [$x: expr; $n: expr]) => {{
         // Can't use this because SpecFromElem is private
@@ -92,7 +102,7 @@ macro_rules! alloc_vec {
 
 #[cfg(test)]
 mod tests {
-    use crate::BumpAllocator;
+    use crate::{AllocatorExt, BumpAllocator};
 
     #[test]
     fn bump() {

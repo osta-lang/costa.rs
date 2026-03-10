@@ -2,7 +2,7 @@ use osta_session::Session;
 
 #[test]
 fn interner() {
-    let mut session = Session::create();
+    let mut session = Session::new();
 
     let id1 = session.get_or_intern("hello");
     let id2 = session.get_or_intern("world");

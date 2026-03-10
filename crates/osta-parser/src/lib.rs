@@ -7,29 +7,90 @@ mod stmt;
 mod tests;
 mod util;
 
-pub use crate::error::{ParseResult, ParseResultOpt, ParserError};
+use crate::error::ParserIntent;
+pub use crate::error::{ParseResult, ParseResultOpt, ParserError, ParserErrorKind};
 use crate::item::parse_item;
 use crate::util::peek;
-use osta_ast::{AstBuilder, AST};
+use osta_alloc::BumpAllocator;
+use osta_ast::AstBuilder;
 use osta_lexer::Lexer;
-use osta_session::Session;
+use osta_session::interner::{InternId, Interner};
+use osta_syntax::Span;
+use std::cell::RefCell;
 
-pub fn parse(session: &mut Session, source: &str) -> ParseResult<AST> {
-    let mut lexer = Lexer::new(source);
-    let mut builder = AstBuilder::new();
-    parse_root(session, &mut lexer, &mut builder)?;
-    Ok(builder.build())
+thread_local! {
+    static FILE_SESSION: RefCell<Option<FileSession<'static>>> = RefCell::new(None);
 }
 
-pub fn parse_root<'src>(
-    session: &mut Session,
-    lexer: &mut Lexer<'src>,
-    builder: &mut AstBuilder,
-) -> ParseResult<()> {
-    while peek(lexer)?.is_some() {
-        let id = builder
-            .checkpoint()
-            .resolve(parse_item(session, lexer, builder))?;
+pub struct FileSession<'src> {
+    pub lexer: Lexer<'src>,
+    pub interner: Interner<BumpAllocator>,
+    pub builder: AstBuilder,
+}
+
+impl<'src> FileSession<'src> {
+    pub(crate) fn start(source: &'src str) {
+        let source: &'static str =
+            unsafe { std::mem::transmute::<&'src str, &'static str>(source) };
+
+        let lexer = Lexer::new(source);
+        let interner = Interner::new_in(BumpAllocator::new());
+        let builder = AstBuilder::new();
+        let session = FileSession { lexer, interner, builder };
+
+        FILE_SESSION.with_borrow_mut(|option| *option = Some(session));
+    }
+}
+
+impl FileSession<'static> {
+    #[inline(always)]
+    fn end<'src>() -> FileSession<'src> {
+        let session =
+            FILE_SESSION.with_borrow_mut(|option| unsafe { option.take().unwrap_unchecked() });
+        unsafe { std::mem::transmute(session) }
+    }
+
+    #[inline(always)]
+    pub(crate) fn get() -> &'static mut FileSession<'static> {
+        FILE_SESSION.with_borrow_mut(|session| unsafe { std::mem::transmute(session) })
+    }
+
+    #[inline(always)]
+    pub(crate) fn lexer() -> &'static mut Lexer<'static> {
+        &mut Self::get().lexer
+    }
+
+    #[inline(always)]
+    pub(crate) fn intern(span: &Span) -> InternId {
+        let lexer = Self::lexer();
+        let s = span.slice(lexer.source());
+        Self::intern_str(s)
+    }
+
+    #[inline(always)]
+    pub(crate) fn intern_str(s: &str) -> InternId {
+        Self::get().interner.get_or_intern(s)
+    }
+
+    #[inline(always)]
+    pub(crate) fn ast() -> &'static mut AstBuilder {
+        &mut Self::get().builder
+    }
+}
+
+pub fn parse(source: &'_ str) -> ParseResult<FileSession<'_>> {
+    FileSession::start(source);
+    parse_root()?;
+    let session = FileSession::end();
+    Ok(session)
+}
+
+pub fn parse_root() -> ParseResult<()> {
+    scoped_intent!(ParserIntent::TopLevel);
+    let builder = FileSession::ast();
+
+    while peek()?.is_some() {
+        let id = try_parse!(parse_item)?;
         builder.add_item(id);
     }
     Ok(())

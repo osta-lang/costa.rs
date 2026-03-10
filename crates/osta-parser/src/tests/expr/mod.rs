@@ -1,19 +1,16 @@
 use crate::tests::assert_path;
+use crate::FileSession;
 use osta_ast::ast::{AstNodeKind, FnCall, Interned, InternedKind, Path};
-use osta_ast::{AstBuilder, NodeId};
-use osta_lexer::Lexer;
-use osta_session::Session;
+use osta_ast::NodeId;
 use osta_syntax::Span;
 
 mod unary;
 
 #[test]
 fn simple() {
-    let mut session = Session::create();
-    let mut lexer = Lexer::new("-4 * 7");
-    let mut builder = AstBuilder::new();
-    let (idx, span) = crate::expr::parse_expr(&mut session, &mut lexer, &mut builder, 0)
-        .expect("failed to parse");
+    FileSession::start("-4 * 7");
+    let (idx, span) = crate::expr::parse_expr(0).expect("failed to parse");
+    let FileSession { builder, mut interner, .. } = FileSession::end();
     let ast = builder.build();
 
     assert_eq!(span, Span::new(0, 6));
@@ -30,7 +27,7 @@ fn simple() {
                     &AstNodeKind::Chain(NodeId::from_ty(5), NodeId::from_ty(6))
                 );
                 assert_path!(
-                    session,
+                    interner,
                     ast,
                     *path_id,
                     Span::new(3, 4),

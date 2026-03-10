@@ -29,10 +29,13 @@ pub fn parse_expr<'src>(min_bp: u8) -> ParseResult {
 
     macro_rules! infix_op {
         ($builder:expr, $lhs:ident, $l_bp:literal, $r_bp:literal, $($path:ident)::+) => {{
+            let checkpoint = $crate::util::Checkpoint::new();
             let Token { span, .. } = $crate::util::unsafe_next();
             if $l_bp < min_bp {
+                checkpoint.rollback();
                 break;
             } else if $l_bp == min_bp {
+                checkpoint.rollback();
                 return err!(
                     miette! {
                         severity = Severity::Error,
@@ -48,7 +51,7 @@ pub fn parse_expr<'src>(min_bp: u8) -> ParseResult {
                     ParserErrorPolicy::Undefined
                 );
             }
-            let (rhs, rhs_span) = try_parse!(parse_expr, $r_bp)?;
+            let (rhs, rhs_span) = checkpoint.resolve(parse_expr($r_bp))?;
             let path = $crate::path::create_path([
                 $((stringify!($path), span.clone())),+
             ]);

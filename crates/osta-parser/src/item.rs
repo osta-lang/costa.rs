@@ -9,11 +9,11 @@ use osta_ast::NodeId;
 use osta_lexer::{Token, TokenKind};
 use osta_syntax::Span;
 
-pub fn parse_item<'src>() -> ParseResult<NodeId> {
+pub fn parse_item() -> ParseResult<NodeId> {
     Ok(parse_fn_decl()?.0)
 }
 
-pub fn parse_fn_decl<'src>() -> ParseResult {
+pub fn parse_fn_decl() -> ParseResult {
     let builder = FileSession::builder();
 
     let start = expect(TokenKind::Fn)?.span.start;
@@ -58,7 +58,7 @@ pub fn parse_fn_decl_args() -> ParseResult {
     }
 }
 
-pub fn parse_type<'src>() -> ParseResult {
+pub fn parse_type() -> ParseResult {
     let builder = FileSession::builder();
 
     let ty = match next()? {

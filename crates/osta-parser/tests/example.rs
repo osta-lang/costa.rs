@@ -1,3 +1,4 @@
+use miette::NamedSource;
 use osta_ast::ast::{AstNodeKind, FnDecl, Interned, InternedKind, ItemId};
 use osta_ast::NodeId;
 use osta_parser::{parse, FileSession};
@@ -8,7 +9,11 @@ use osta_syntax::Span;
 fn simplest() {
     let src = include_str!("../../../examples/simplest.osta");
 
-    let FileSession { builder, interner, .. } = parse(src).expect("parse error");
+    let FileSession { builder, interner, .. } = parse(src)
+        .map_err(|err| {
+            err.with_source_code(NamedSource::new("../../../examples/simplest.osta", src))
+        })
+        .unwrap();
     let ast = builder.build();
 
     assert_eq!(interner.resolve(InternId::START), "main");
@@ -37,7 +42,9 @@ fn simplest() {
 fn simple() {
     let src = include_str!("../../../examples/simple.osta");
 
-    let FileSession { builder, interner, .. } = parse(src).expect("parse error");
+    let FileSession { builder, interner, .. } = parse(src)
+        .map_err(|err| err.with_source_code(NamedSource::new("../../../examples/simple.osta", src)))
+        .unwrap();
     let ast = builder.build();
 
     assert_eq!(interner.resolve(InternId::START), "main");

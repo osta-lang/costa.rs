@@ -1,7 +1,7 @@
 #[macro_use]
 mod common;
 
-use osta_lexer::{Lexer, TokenKind};
+use osta_lexer::TokenKind;
 
 #[test]
 fn self_type() {

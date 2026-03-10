@@ -9,7 +9,7 @@ use osta_ast::ast::{Interned, InternedKind};
 use osta_lexer::{Token, TokenKind};
 use osta_syntax::Span;
 
-pub fn parse_expr<'src>(min_bp: u8) -> ParseResult {
+pub fn parse_expr(min_bp: u8) -> ParseResult {
     let builder = FileSession::builder();
 
     macro_rules! postfix_op {
@@ -214,7 +214,7 @@ pub fn parse_expr<'src>(min_bp: u8) -> ParseResult {
     Ok(lhs)
 }
 
-fn parse_expr_lhs<'src>() -> ParseResult {
+fn parse_expr_lhs() -> ParseResult {
     let builder = FileSession::builder();
 
     macro_rules! prefix_op {
@@ -366,15 +366,11 @@ fn parse_expr_lhs<'src>() -> ParseResult {
     Ok(lhs)
 }
 
-pub fn parse_block<'src>() -> ParseResult {
+pub fn parse_block() -> ParseResult {
     let builder = FileSession::builder();
 
     let start = expect(TokenKind::LBrace)?.span.start;
-    // let stmts = try_parse!(parse_stmts, session, lexer, builder)
-    //     .ok()
-    //     .map(|(node_id, _)| node_id);
-    // TODO(johan): this is the correct implementation ^ Comment this v
-    let stmts = Some(parse_stmts()?.0);
+    let stmts = parse_stmts()?.map(|stmt| stmt.0);
     let end = expect(TokenKind::RBrace)?.span.end;
 
     let span = Span::new(start, end);

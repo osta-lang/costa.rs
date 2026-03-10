@@ -19,7 +19,7 @@ use osta_syntax::Span;
 use std::cell::RefCell;
 
 thread_local! {
-    static FILE_SESSION: RefCell<Option<FileSession<'static>>> = RefCell::new(None);
+    static FILE_SESSION: RefCell<Option<FileSession<'static>>> = const { RefCell::new(None) };
 }
 
 pub struct FileSession<'src> {

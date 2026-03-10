@@ -45,7 +45,7 @@ pub fn expect(kind: TokenKind) -> ParseResult<Token> {
                 severity = Severity::Error,
                 code = "parser/token/unexpected/eof",
                 labels = vec![LabeledSpan::new(
-                    Some(format!("`{:?}` was expected", kind)),
+                    Some(format!("`{kind:?}` was expected")),
                     lexer.source().len(),
                     0
                 )],

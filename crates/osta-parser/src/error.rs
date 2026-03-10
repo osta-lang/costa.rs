@@ -5,7 +5,7 @@ use osta_syntax::Span;
 use std::fmt::{Debug, Display};
 use thiserror::Error;
 
-#[derive(PartialEq)]
+#[derive(PartialEq, Debug)]
 pub enum ParserErrorPolicy {
     Undefined,
     TryOthers,
@@ -74,7 +74,7 @@ impl Diagnostic for VersatileError {
         Some(Box::new(
             self.related
                 .iter()
-                .map(|x| -> &(dyn Diagnostic) { &*x.borrow() }),
+                .map(|x| -> &(dyn Diagnostic) { x.borrow() }),
         ))
     }
 
@@ -82,7 +82,7 @@ impl Diagnostic for VersatileError {
         use ::core::borrow::Borrow;
         self.cause
             .as_ref()
-            .map(|d| -> &(dyn Diagnostic) { &*d.borrow() })
+            .map(|d| -> &(dyn Diagnostic) { d.borrow() })
     }
 }
 

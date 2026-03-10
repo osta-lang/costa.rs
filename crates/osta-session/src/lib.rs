@@ -37,3 +37,9 @@ impl Session {
         self.interner.resolve(id)
     }
 }
+
+impl Default for Session {
+    fn default() -> Self {
+        Self::new()
+    }
+}

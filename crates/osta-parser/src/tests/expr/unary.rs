@@ -2,10 +2,8 @@ mod unary {
     use crate::tests::assert_path;
     use crate::FileSession;
     use osta_ast::ast::{AstNodeKind, FnCall, Interned, InternedKind, Path};
-    use osta_ast::{AstBuilder, NodeId};
-    use osta_lexer::Lexer;
+    use osta_ast::NodeId;
     use osta_session::interner::InternId;
-    use osta_session::Session;
     use osta_syntax::Span;
 
     #[test]

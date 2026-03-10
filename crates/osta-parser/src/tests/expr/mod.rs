@@ -9,7 +9,7 @@ mod unary;
 #[test]
 fn simple() {
     FileSession::start("-4 * 7");
-    let (idx, span) = crate::expr::parse_expr(0).expect("failed to parse");
+    let (idx, span) = crate::expr::parse_expr(0).unwrap();
     let FileSession { builder, mut interner, .. } = FileSession::end();
     let ast = builder.build();
 

@@ -158,7 +158,7 @@ impl<'src> Iterator for Lexer<'src> {
 
         let entry = self.advance()?;
 
-        if self.checkpoints.len() > 0 {
+        if !self.checkpoints.is_empty() {
             self.accumulator.push(entry.clone());
             self.accumulator_idx += 1;
         }

@@ -9,7 +9,7 @@ osta-parser.workspace = true
 osta-session.workspace = true
 osta-ast.workspace = true
 
-miette = { workspace = true, features = ["fancy"] }
+miette.workspace = true
 
 clap = { version = "4.5.60", features = ["derive"] }
 
@@ -26,5 +26,5 @@ osta-parser = { path = "crates/osta-parser" }
 osta-session = { path = "crates/osta-session" }
 osta-syntax = { path = "crates/osta-syntax" }
 
-miette = "7.6.0"
+miette = { version = "7.6.0", features = ["fancy"] }
 thiserror = "2.0.18"

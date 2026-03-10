@@ -1,4 +1,4 @@
-use crate::error::{eof_label, ParserErrorPolicy};
+use crate::error::{eof_label, ParseResultOpt, ParserErrorPolicy};
 use crate::expr::parse_expr;
 use crate::item::parse_type;
 use crate::util::{advance_if, expect, next, peek, unsafe_next};
@@ -8,31 +8,41 @@ use osta_ast::ast::{Interned, InternedKind};
 use osta_lexer::{Token, TokenKind};
 use osta_syntax::Span;
 
-pub fn parse_stmts() -> ParseResult {
+pub fn parse_stmts() -> ParseResultOpt {
     let builder = FileSession::builder();
 
-    let first = parse_stmt()?;
-    // let first = match parse_stmt() {
-    //     Ok(stmt) => stmt,
-    //     err => {
-    //         loop {
-    //             if let Ok(Some(Token { kind, .. })) = next() {
-    //                 if matches!(kind, TokenKind::Semicolon) {
-    //                     break;
-    //                 }
-    //             }
-    //         }
-    //         return err;
-    //     }
-    // };
+    if let Some(Token { kind: TokenKind::RBrace, .. }) = peek()? {
+        return Ok(None);
+    }
+
+    // This parses a statement and recovers from errors
+    // TODO(johan): emitting a warning of the skipped span could be beneficial
+    let first = match parse_stmt() {
+        Ok(stmt) => stmt,
+        Err(err) => {
+            loop {
+                if let Ok(token) = next()
+                    && matches!(token, Some(Token { kind: TokenKind::Semicolon, .. }) | None)
+                {
+                    break;
+                }
+                if let Ok(token) = peek()
+                    && matches!(token, Some(Token { kind: TokenKind::RBrace, .. }))
+                {
+                    break;
+                }
+            }
+            return Err(err);
+        }
+    };
 
     match try_parse!(parse_stmts) {
-        Ok((stmts_id, stmts_span)) => {
+        Ok(Some((stmts_id, stmts_span))) => {
             let span = first.1.join(&stmts_span);
             let node_id = builder.add_chain(span.clone(), first.0, stmts_id);
-            Ok((node_id, span))
+            Ok(Some((node_id, span)))
         }
-        _ => Ok(first),
+        _ => Ok(Some(first)),
     }
 }
 

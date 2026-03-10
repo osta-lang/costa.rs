@@ -16,7 +16,7 @@ pub fn parse_ident() -> ParseResult<Interned> {
     Ok(Interned::new(idx, tok.span, InternedKind::Ident))
 }
 
-pub fn parse_path<'src>(root: bool) -> ParseResult {
+pub fn parse_path(root: bool) -> ParseResult {
     let builder = FileSession::builder();
 
     let ident = match next()? {
@@ -41,8 +41,8 @@ pub fn parse_path<'src>(root: bool) -> ParseResult {
                     "`package` can only be used at the root of a path".to_string(),
                 ),
                 _ => (
-                    format!("Path must start by an identifier, `super` or `package`, but `{:?}` was found", kind),
-                    format!("Unexpected token! `{:?}` was found, but an identifier, `super` or `package` was expected", kind),
+                    format!("Path must start by an identifier, `super` or `package`, but `{kind:?}` was found"),
+                    format!("Unexpected token! `{kind:?}` was found, but an identifier, `super` or `package` was expected"),
                 ),
             };
 
@@ -88,7 +88,7 @@ pub fn parse_path<'src>(root: bool) -> ParseResult {
     }
 }
 
-pub fn continue_path<'src>(span: Span) -> ParseResult {
+pub fn continue_path(span: Span) -> ParseResult {
     let builder = FileSession::builder();
 
     if advance_if(TokenKind::DoubleColon)? {

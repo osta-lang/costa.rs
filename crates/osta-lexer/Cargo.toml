@@ -8,8 +8,9 @@ default = ["unicode-identifiers"]
 unicode-identifiers = []
 
 [dependencies]
-osta-diagnostic.workspace = true
 osta-syntax.workspace = true
 thiserror.workspace = true
+
+miette.workspace = true
 
 logos = "0.16.1"

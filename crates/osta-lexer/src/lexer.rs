@@ -1,6 +1,7 @@
 use crate::token::{Token, TokenKind};
 use logos::Logos;
-use osta_diagnostic::{Diagnostic, DiagnosticLabeledSpan};
+use miette::Diagnostic;
+use miette::LabeledSpan;
 use osta_syntax::Span;
 use std::fmt::Display;
 use thiserror::Error;
@@ -37,24 +38,24 @@ impl Diagnostic for LexerError {
         Some(Box::new(code))
     }
 
-    fn labels(&self) -> Option<Box<dyn Iterator<Item = DiagnosticLabeledSpan> + '_>> {
+    fn labels(&self) -> Option<Box<dyn Iterator<Item = LabeledSpan> + '_>> {
         let labels = match self.kind {
-            LexerErrorKind::UnknownToken => vec![DiagnosticLabeledSpan::new(
+            LexerErrorKind::UnknownToken => vec![LabeledSpan::new(
                 Some("Unknown token".to_string()),
                 self.span.start,
                 self.span.len(),
             )],
-            LexerErrorKind::InvalidInteger(_) => vec![DiagnosticLabeledSpan::new(
+            LexerErrorKind::InvalidInteger(_) => vec![LabeledSpan::new(
                 Some("Invalid integer".to_string()),
                 self.span.start,
                 self.span.len(),
             )],
-            LexerErrorKind::UnterminatedBlockComment => vec![DiagnosticLabeledSpan::new(
+            LexerErrorKind::UnterminatedBlockComment => vec![LabeledSpan::new(
                 Some("Unterminated block comment".to_string()),
                 self.span.start,
                 self.span.len(),
             )],
-            LexerErrorKind::UnterminatedString => vec![DiagnosticLabeledSpan::new(
+            LexerErrorKind::UnterminatedString => vec![LabeledSpan::new(
                 Some("Unterminated string".to_string()),
                 self.span.start,
                 self.span.len(),
@@ -62,10 +63,6 @@ impl Diagnostic for LexerError {
         };
 
         Some(Box::new(labels.into_iter()))
-    }
-
-    fn diagnostic_source(&self) -> Option<&dyn Diagnostic> {
-        todo!()
     }
 }
 

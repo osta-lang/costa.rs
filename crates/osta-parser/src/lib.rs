@@ -7,10 +7,10 @@ mod stmt;
 mod tests;
 mod util;
 
-use crate::error::ParserIntent;
-pub use crate::error::{ParseResult, ParseResultOpt, ParserError, ParserErrorKind};
+use crate::error::ParseResult;
 use crate::item::parse_item;
 use crate::util::peek;
+use miette::Report;
 use osta_alloc::BumpAllocator;
 use osta_ast::AstBuilder;
 use osta_lexer::Lexer;
@@ -73,21 +73,23 @@ impl FileSession<'static> {
     }
 
     #[inline(always)]
-    pub(crate) fn ast() -> &'static mut AstBuilder {
+    pub(crate) fn builder() -> &'static mut AstBuilder {
         &mut Self::get().builder
     }
 }
 
-pub fn parse(source: &'_ str) -> ParseResult<FileSession<'_>> {
+pub fn parse(source: &'_ str) -> Result<FileSession<'_>, Report> {
     FileSession::start(source);
-    parse_root()?;
+    parse_root().map_err(|err| {
+        FileSession::end();
+        err.0
+    })?;
     let session = FileSession::end();
     Ok(session)
 }
 
 pub fn parse_root() -> ParseResult<()> {
-    scoped_intent!(ParserIntent::TopLevel);
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     while peek()?.is_some() {
         let id = try_parse!(parse_item)?;

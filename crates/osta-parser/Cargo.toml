@@ -6,11 +6,9 @@ edition = "2024"
 [dependencies]
 osta-alloc.workspace = true
 osta-ast.workspace = true
-osta-diagnostic.workspace = true
 osta-lexer.workspace = true
 osta-session.workspace = true
 osta-syntax.workspace = true
 
+miette.workspace = true
 thiserror.workspace = true
-
-defer-rs = "0.1.0"

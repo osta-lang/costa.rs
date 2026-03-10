@@ -171,29 +171,9 @@ dependencies = [
  "clap",
  "miette",
  "osta-ast",
- "osta-diagnostic",
  "osta-lexer",
  "osta-parser",
  "osta-session",
-]
-
-[[package]]
-name = "defer-rs"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "4e473484ea59ca2e7347d5d78da70dda8a8d3b625f0d716009da0936a0bd7272"
-dependencies = [
- "defer-rs-impl",
-]
-
-[[package]]
-name = "defer-rs-impl"
-version = "0.1.0"
-source = "registry+https://github.com/rust-lang/crates.io-index"
-checksum = "2fd0db9be2c6191aaab2294e9f6390c549f9112cebc6a0a8281c0cfd694523cc"
-dependencies = [
- "quote",
- "syn",
 ]
 
 [[package]]
@@ -357,15 +337,6 @@ dependencies = [
 ]
 
 [[package]]
-name = "osta-diagnostic"
-version = "0.1.0"
-dependencies = [
- "miette",
- "osta-alloc",
- "thiserror",
-]
-
-[[package]]
 name = "osta-index"
 version = "0.1.0"
 
@@ -374,7 +345,7 @@ name = "osta-lexer"
 version = "0.1.0"
 dependencies = [
  "logos",
- "osta-diagnostic",
+ "miette",
  "osta-syntax",
  "thiserror",
 ]
@@ -383,10 +354,9 @@ dependencies = [
 name = "osta-parser"
 version = "0.1.0"
 dependencies = [
- "defer-rs",
+ "miette",
  "osta-alloc",
  "osta-ast",
- "osta-diagnostic",
  "osta-lexer",
  "osta-session",
  "osta-syntax",
@@ -399,7 +369,6 @@ version = "0.1.0"
 dependencies = [
  "miette",
  "osta-alloc",
- "osta-diagnostic",
  "osta-index",
 ]
 

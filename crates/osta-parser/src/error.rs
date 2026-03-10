@@ -1,150 +1,130 @@
+use crate::FileSession;
+use miette::{Diagnostic, LabeledSpan, Report, Severity};
 use osta_ast::NodeId;
-use osta_diagnostic::{Diagnostic, DiagnosticLabeledSpan, Severity};
-use osta_lexer::{LexerError, TokenKind};
 use osta_syntax::Span;
-use std::cell::RefCell;
-use std::fmt::Display;
+use std::fmt::{Debug, Display};
 use thiserror::Error;
 
-thread_local! {
-    static INTENT_STACK: RefCell<Vec<ParserIntent>> = RefCell::new(Vec::new());
+#[derive(PartialEq)]
+pub enum ParserErrorPolicy {
+    Undefined,
+    TryOthers,
+    GoUp,
 }
 
-pub(crate) fn push_intent(intent: ParserIntent) {
-    INTENT_STACK.with_borrow_mut(|stack| stack.push(intent));
-}
-
-pub(crate) fn pop_intent() {
-    INTENT_STACK.with_borrow_mut(|stack| stack.pop().unwrap());
-}
-
-#[macro_export]
-macro_rules! scoped_intent {
-    ($intent:expr) => {
-        $crate::error::push_intent($intent);
-        let _deferred_scoped_intent = ::defer_rs::Defer::new(|| $crate::error::pop_intent());
-    };
-}
+pub type ParserError = (Report, ParserErrorPolicy);
+pub type ParseResult<T = (NodeId, Span)> = Result<T, ParserError>;
+pub type ParseResultOpt<T = (NodeId, Span)> = ParseResult<Option<T>>;
 
 #[derive(Debug, Error)]
-pub enum ParserErrorKind {
-    #[error(transparent)]
-    LexerError(#[from] LexerError),
-    #[error("unexpected token: fount {found:?}")]
-    UnexpectedToken { found: TokenKind, span: Span },
-    #[error("ambiguous operator at the same precedence level")]
-    AmbiguousOperator { span: Span },
-    #[error("unexpected token: expected {expected:?}, found {found:?}")]
-    ExpectedToken { expected: TokenKind, found: TokenKind, span: Span },
-    #[error("unexpected EOF")]
-    UnexpectedEof,
-    #[error("{msg}")]
-    CustomError { code: Option<&'static str>, msg: String, span: Span },
+#[error("[{severity:?} | {code}] {message}")]
+pub(crate) struct VersatileError {
+    message: String,
+    code: &'static str,
+    severity: Severity,
+    pub(crate) help: Option<&'static str>,
+    pub(crate) url: Option<&'static str>,
+    pub(crate) labels: Vec<LabeledSpan>,
+    pub(crate) related: Vec<Report>,
+    pub(crate) cause: Option<Report>,
 }
 
-#[derive(Debug, Clone)]
-pub enum ParserIntent {
-    TopLevel,
-    FuncDecl,
-    Block,
-    Statement,
-    Expression,
-}
-
-#[derive(Debug, Error)]
-#[error("{intent_stack:?}: {kind}")]
-pub struct ParserError {
-    kind: ParserErrorKind,
-    intent_stack: Vec<ParserIntent>,
-}
-
-impl ParserError {
-    pub fn new(kind: ParserErrorKind, intent_stack: Vec<ParserIntent>) -> Self {
-        Self { kind, intent_stack }
-    }
-}
-
-impl From<ParserErrorKind> for ParserError {
-    fn from(kind: ParserErrorKind) -> Self {
-        let intent_stack = INTENT_STACK.with_borrow_mut(|stack| stack.clone());
-        Self::new(kind, intent_stack)
-    }
-}
-
-impl Diagnostic for ParserError {
-    fn code<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
-        match &self.kind {
-            ParserErrorKind::LexerError(err) => err.code(),
-            ParserErrorKind::UnexpectedToken { .. } => Some(Box::new("parser::unexpected_token")),
-            ParserErrorKind::AmbiguousOperator { .. } => {
-                Some(Box::new("parser::ambiguous_operator"))
-            }
-            ParserErrorKind::ExpectedToken { .. } => Some(Box::new("parser::expected_token")),
-            ParserErrorKind::UnexpectedEof { .. } => Some(Box::new("parser::unexpected_eof")),
-            ParserErrorKind::CustomError { code, .. } => {
-                Some(Box::new(code.unwrap_or("parser::custom_error")))
-            }
+impl VersatileError {
+    pub fn new(message: String, code: &'static str, severity: Severity) -> Self {
+        Self {
+            message,
+            code,
+            severity,
+            help: None,
+            url: None,
+            labels: Vec::new(),
+            related: Vec::new(),
+            cause: None,
         }
+    }
+}
+
+impl Diagnostic for VersatileError {
+    fn code<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
+        Some(Box::new(self.code))
     }
 
     fn severity(&self) -> Option<Severity> {
-        Some(Severity::Error)
+        Some(self.severity)
     }
 
     fn help<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
-        None
+        self.help.map(|s| Box::new(s) as Box<dyn Display + 'a>)
     }
 
     fn url<'a>(&'a self) -> Option<Box<dyn Display + 'a>> {
-        None
+        self.url.map(|s| Box::new(s) as Box<dyn Display + 'a>)
     }
 
-    fn labels(&self) -> Option<Box<dyn Iterator<Item = DiagnosticLabeledSpan> + '_>> {
-        let labels = match &self.kind {
-            ParserErrorKind::LexerError(err) => return err.labels(),
-            ParserErrorKind::UnexpectedToken { span, .. } => vec![DiagnosticLabeledSpan::new(
-                Some("Unexpected token".to_string()),
-                span.start,
-                span.len(),
-            )],
-            ParserErrorKind::AmbiguousOperator { span, .. } => vec![DiagnosticLabeledSpan::new(
-                Some("Ambiguous operator".to_string()),
-                span.start,
-                span.len(),
-            )],
-            ParserErrorKind::ExpectedToken { span, expected, found } => {
-                vec![DiagnosticLabeledSpan::new(
-                    Some(format!("Expected {:?} here but got {:?}", expected, found)),
-                    span.start,
-                    span.len(),
-                )]
-            }
-            ParserErrorKind::UnexpectedEof => return None,
-            ParserErrorKind::CustomError { msg, span, .. } => vec![DiagnosticLabeledSpan::new(
-                Some(msg.clone()),
-                span.start,
-                span.len(),
-            )],
-        };
-
-        Some(Box::new(labels.into_iter()))
+    fn labels(&self) -> Option<Box<dyn Iterator<Item = LabeledSpan> + '_>> {
+        if self.related.is_empty() {
+            None
+        } else {
+            Some(Box::new(self.labels.iter().cloned()))
+        }
     }
 
     fn related<'a>(&'a self) -> Option<Box<dyn Iterator<Item = &'a dyn Diagnostic> + 'a>> {
-        None
+        use ::core::borrow::Borrow;
+        Some(Box::new(
+            self.related
+                .iter()
+                .map(|x| -> &(dyn Diagnostic) { &*x.borrow() }),
+        ))
     }
 
     fn diagnostic_source(&self) -> Option<&dyn Diagnostic> {
-        None
+        use ::core::borrow::Borrow;
+        self.cause
+            .as_ref()
+            .map(|d| -> &(dyn Diagnostic) { &*d.borrow() })
     }
 }
 
-pub type ParseResult<T = (NodeId, Span)> = osta_diagnostic::Result<T>;
-pub type ParseResultOpt<T = (NodeId, Span)> = ParseResult<Option<T>>;
+pub(crate) fn eof_label<S: Into<String>>(msg: S) -> LabeledSpan {
+    LabeledSpan::new(Some(msg.into()), FileSession::lexer().source().len() - 1, 0)
+}
 
 #[macro_export]
 macro_rules! err {
-    ($expr: expr) => {
-        Err($crate::error::ParserError::from($expr).into())
+    ($diagnostic: expr, $policy: expr) => {{
+        Err(($diagnostic.into(), $policy))
+    }};
+}
+
+#[macro_export]
+macro_rules! diagnostic {
+    (
+        message = $msg:expr,
+        code = $code:literal,
+        severity = $severity:expr
+        $(, $field:ident = $value:expr)*
+        $(,)?
+    ) => {{
+        let mut diag = $crate::error::VersatileError::new($msg.into(), $code, $severity);
+
+        $($crate::diagnostic!(@set_field $field = $value, diag);)*
+
+        diag
+    }};
+    (@set_field help = $value:literal, $diag:ident) => {
+        $diag.help = Some($value);
+    };
+    (@set_field url = $value:literal, $diag:ident) => {
+        $diag.url = Some($value);
+    };
+    (@set_field labels = $value:expr, $diag:ident) => {
+        $diag.labels = $value;
+    };
+    (@set_field related = $value:expr, $diag:ident) => {
+        $diag.related = $value;
+    };
+    (@set_field cause = $value:expr, $diag:ident) => {
+        $diag.cause = Some($value);
     };
 }

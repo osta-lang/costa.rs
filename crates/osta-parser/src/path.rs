@@ -1,5 +1,7 @@
+use crate::error::ParserErrorPolicy;
 use crate::util::{advance_if, next};
-use crate::{err, expect_choice, FileSession, ParseResult, ParserErrorKind};
+use crate::{err, expect_choice, FileSession, ParseResult};
+use miette::{miette, LabeledSpan, Severity};
 use osta_ast::ast::{Interned, InternedKind};
 use osta_ast::NodeId;
 use osta_lexer::{Token, TokenKind};
@@ -15,7 +17,7 @@ pub fn parse_ident() -> ParseResult<Interned> {
 }
 
 pub fn parse_path<'src>(root: bool) -> ParseResult {
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     let ident = match next()? {
         Some(Token { kind: TokenKind::Identifier | TokenKind::Super, span }) => {
@@ -33,9 +35,46 @@ pub fn parse_path<'src>(root: bool) -> ParseResult {
             return Ok((node, span));
         }
         Some(Token { kind, span }) => {
-            return err!(ParserErrorKind::UnexpectedToken { found: kind, span });
+            let msg = match kind {
+                TokenKind::Package if !root => (
+                    "`package` can only be used at the root of a path".to_string(),
+                    "`package` can only be used at the root of a path".to_string(),
+                ),
+                _ => (
+                    format!("Path must start by an identifier, `super` or `package`, but `{:?}` was found", kind),
+                    format!("Unexpected token! `{:?}` was found, but an identifier, `super` or `package` was expected", kind),
+                ),
+            };
+
+            return err!(
+                miette! {
+                    severity = Severity::Error,
+                    code = "parser/path",
+                    labels = vec![LabeledSpan::new(
+                        Some(msg.0),
+                        span.start,
+                        span.end - span.start,
+                    )],
+                    "{}", msg.1
+                },
+                ParserErrorPolicy::TryOthers
+            );
         }
-        None => return err!(ParserErrorKind::UnexpectedEof),
+        None => {
+            return err!(
+                miette! {
+                    severity = Severity::Error,
+                    code = "parser/path/eof",
+                    labels = vec![LabeledSpan::new(
+                        Some("An identifier, `super` or `package` was expected".to_string()),
+                        FileSession::lexer().source().len(),
+                        0
+                    )],
+                    "Unexpected end of file! An identifier, `super` or `package` was expected"
+                },
+                ParserErrorPolicy::Undefined
+            )
+        }
     };
     if advance_if(TokenKind::DoubleColon)? {
         let next = parse_path(false)?.0;
@@ -50,7 +89,7 @@ pub fn parse_path<'src>(root: bool) -> ParseResult {
 }
 
 pub fn continue_path<'src>(span: Span) -> ParseResult {
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     if advance_if(TokenKind::DoubleColon)? {
         let (path_id, path_span) = parse_path(false)?;
@@ -64,7 +103,7 @@ pub fn continue_path<'src>(span: Span) -> ParseResult {
 }
 
 pub fn create_path<const N: usize>(parts: [(&str, Span); N]) -> NodeId {
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     let mut current: Option<NodeId> = None;
     for (part, span) in parts.into_iter().rev() {

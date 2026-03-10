@@ -1,16 +1,16 @@
-use crate::error::{ParserErrorKind, ParserIntent};
+use crate::error::{eof_label, ParseResultOpt, ParserErrorPolicy};
 use crate::path::{continue_path, parse_path};
 use crate::stmt::parse_stmts;
 use crate::util::{advance_if, expect, expect_opt, next, peek};
-use crate::{err, scoped_intent, try_parse, FileSession, ParseResult, ParseResultOpt};
+use crate::{err, try_parse, FileSession, ParseResult};
+use miette::miette;
+use miette::{LabeledSpan, Severity};
 use osta_ast::ast::{Interned, InternedKind};
 use osta_lexer::{Token, TokenKind};
 use osta_syntax::Span;
 
 pub fn parse_expr<'src>(min_bp: u8) -> ParseResult {
-    scoped_intent!(ParserIntent::Expression);
-
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     macro_rules! postfix_op {
         ($builder:expr, $lhs:ident, $l_bp:literal, $($path:ident)::+) => {{
@@ -33,7 +33,20 @@ pub fn parse_expr<'src>(min_bp: u8) -> ParseResult {
             if $l_bp < min_bp {
                 break;
             } else if $l_bp == min_bp {
-                return err!(ParserErrorKind::AmbiguousOperator { span });
+                return err!(
+                    miette! {
+                        severity = Severity::Error,
+                        code = "parser/expr/ambiguous_op",
+                        labels = vec![LabeledSpan::new(
+                            Some("This operator is ambiguous because of its precedence".to_string()),
+                            span.start,
+                            span.end - span.start,
+                        )],
+                        help = "Adding parenthesis may help",
+                        "Ambiguous operator"
+                    },
+                    ParserErrorPolicy::Undefined
+                );
             }
             let (rhs, rhs_span) = try_parse!(parse_expr, $r_bp)?;
             let path = $crate::path::create_path([
@@ -49,7 +62,17 @@ pub fn parse_expr<'src>(min_bp: u8) -> ParseResult {
     let mut lhs = match peek()? {
         Some(Token { kind: TokenKind::LBrace, .. }) => parse_block()?,
         Some(_) => parse_expr_lhs()?,
-        None => return err!(ParserErrorKind::UnexpectedEof),
+        None => {
+            return err!(
+                miette! {
+                    severity = Severity::Error,
+                    code = "parser/expr/eof",
+                    labels = vec![eof_label("An expression was expected to begin here, but instead the end of file was reached")],
+                    "Unexpected end of file! Expression was expected"
+                },
+                ParserErrorPolicy::Undefined
+            )
+        }
     };
 
     loop {
@@ -189,7 +212,7 @@ pub fn parse_expr<'src>(min_bp: u8) -> ParseResult {
 }
 
 fn parse_expr_lhs<'src>() -> ParseResult {
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     macro_rules! prefix_op {
         ($builder:expr, $op_span:ident, $($path:ident)::+) => {{
@@ -308,18 +331,40 @@ fn parse_expr_lhs<'src>() -> ParseResult {
             TokenKind::DoubleMinus => {
                 prefix_op!(builder, span, core::ops::PreDec::dec)
             }
-            kind => return err!(ParserErrorKind::UnexpectedToken { found: kind, span }),
+            kind => {
+                return err!(
+                    miette! {
+                        severity = Severity::Error,
+                        code = "parser/expr/unknown_starter",
+                        labels = vec![LabeledSpan::new(
+                            Some("Change this by a prefix operator or a value".into()),
+                            span.start,
+                            span.end - span.start,
+                        )],
+                        "Expression can't start with `{:?}`", kind
+                    },
+                    ParserErrorPolicy::Undefined
+                )
+            }
         },
-        None => return err!(ParserErrorKind::UnexpectedEof),
+        None => {
+            return err!(
+                miette! {
+                    severity = Severity::Error,
+                    code = "parser/expr/eof_starter",
+                    labels = vec![eof_label("An expression was expected here")],
+                    "Unexpected end of file! Expression was expected"
+                },
+                ParserErrorPolicy::Undefined
+            )
+        }
     };
 
     Ok(lhs)
 }
 
 pub fn parse_block<'src>() -> ParseResult {
-    scoped_intent!(ParserIntent::Block);
-
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     let start = expect(TokenKind::LBrace)?.span.start;
     // let stmts = try_parse!(parse_stmts, session, lexer, builder)
@@ -335,7 +380,7 @@ pub fn parse_block<'src>() -> ParseResult {
 }
 
 fn parse_fn_call_args() -> ParseResultOpt {
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     if expect_opt(TokenKind::RParen)?.is_some() {
         return Ok(None);

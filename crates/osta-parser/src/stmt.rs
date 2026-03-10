@@ -1,32 +1,30 @@
-use crate::error::ParserIntent;
+use crate::error::{eof_label, ParserErrorPolicy};
 use crate::expr::parse_expr;
 use crate::item::parse_type;
 use crate::util::{advance_if, expect, next, peek, unsafe_next};
-use crate::{err, scoped_intent, try_parse, FileSession, ParseResult, ParserErrorKind};
+use crate::{diagnostic, err, try_parse, FileSession, ParseResult};
+use miette::{miette, LabeledSpan, Severity};
 use osta_ast::ast::{Interned, InternedKind};
-use osta_diagnostic::RequireSolvingOne;
 use osta_lexer::{Token, TokenKind};
 use osta_syntax::Span;
 
 pub fn parse_stmts() -> ParseResult {
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
-    let first = match parse_stmt() {
-        Ok(stmt) => stmt,
-        err => {
-            loop {
-                if let Err(_) = peek() {
-                    let _ = next();
-                    continue;
-                }
-                let Token { kind, .. } = unsafe_next();
-                if matches!(kind, TokenKind::Semicolon) {
-                    break;
-                }
-            }
-            return err;
-        }
-    };
+    let first = parse_stmt()?;
+    // let first = match parse_stmt() {
+    //     Ok(stmt) => stmt,
+    //     err => {
+    //         loop {
+    //             if let Ok(Some(Token { kind, .. })) = next() {
+    //                 if matches!(kind, TokenKind::Semicolon) {
+    //                     break;
+    //                 }
+    //             }
+    //         }
+    //         return err;
+    //     }
+    // };
 
     match try_parse!(parse_stmts) {
         Ok((stmts_id, stmts_span)) => {
@@ -39,19 +37,37 @@ pub fn parse_stmts() -> ParseResult {
 }
 
 fn parse_stmt() -> ParseResult {
-    scoped_intent!(ParserIntent::Statement);
-
     let e1 = match try_parse!(parse_expr_stmt) {
-        Err(e1) => e1,
+        Err(err) => {
+            if err.1 == ParserErrorPolicy::GoUp {
+                return Err(err);
+            } else {
+                err
+            }
+        }
         ok => return ok,
     };
 
     let e2 = match try_parse!(parse_variable_binding) {
-        Err(e2) => e2,
+        Err(err) => {
+            if err.1 == ParserErrorPolicy::GoUp {
+                return Err(err);
+            } else {
+                err
+            }
+        }
         ok => return ok,
     };
 
-    Err(RequireSolvingOne::new(vec![e1, e2]).into())
+    err!(
+        diagnostic! {
+            message = "Solve one of this problems",
+            code = "parser/stmt",
+            severity = Severity::Error,
+            related = vec![e1.0, e2.0]
+        },
+        ParserErrorPolicy::Undefined
+    )
 }
 
 fn parse_expr_stmt() -> ParseResult {
@@ -65,19 +81,35 @@ fn parse_expr_stmt() -> ParseResult {
         }
         Some(Token { kind: TokenKind::RBrace, .. }) => Ok((expr_id, expr_span)),
         Some(_) => {
-            let Token { kind, span } = unsafe_next();
-            err!(ParserErrorKind::ExpectedToken {
-                expected: TokenKind::Semicolon,
-                found: kind,
-                span
-            })
+            let Token { span, .. } = unsafe_next();
+            err!(
+                miette! {
+                    severity = Severity::Error,
+                    code = "parser/stmt/expr/termination",
+                    labels = vec![LabeledSpan::new(
+                        Some("`;` is missing after this expression".to_string()),
+                        span.start,
+                        span.end - span.start,
+                    )],
+                    "Unterminated expression"
+                },
+                ParserErrorPolicy::GoUp
+            )
         }
-        None => err!(ParserErrorKind::UnexpectedEof),
+        None => err!(
+            miette! {
+                severity = Severity::Error,
+                code = "parser/stmt/expr/eof",
+                labels = vec![eof_label("An expression was expected to start here")],
+                "Unexpected end of file! An expression was expected"
+            },
+            ParserErrorPolicy::GoUp
+        ),
     }
 }
 
 fn parse_variable_binding() -> ParseResult {
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     let (start, ident) = {
         let start = expect(TokenKind::Let)?.span.start;

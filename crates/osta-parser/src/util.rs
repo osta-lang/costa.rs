@@ -1,11 +1,13 @@
-use crate::{err, FileSession, ParseResult, ParseResultOpt, ParserErrorKind};
+use crate::error::{ParseResultOpt, ParserErrorPolicy};
+use crate::{err, FileSession, ParseResult};
+use miette::{miette, LabeledSpan, Severity};
 use osta_lexer::{Token, TokenKind};
 
 pub fn next() -> ParseResultOpt<Token> {
     let lexer = FileSession::lexer();
     match lexer.next() {
         Some(Ok(tok)) => Ok(Some(tok)),
-        Some(Err(e)) => err!(ParserErrorKind::LexerError(e)),
+        Some(Err(e)) => err!(e, ParserErrorPolicy::Undefined),
         None => Ok(None),
     }
 }
@@ -14,18 +16,43 @@ pub fn peek() -> ParseResultOpt<&'static Token> {
     let lexer = FileSession::lexer();
     match lexer.peek() {
         Some(Ok(tok)) => Ok(Some(tok)),
-        Some(Err(e)) => err!(ParserErrorKind::LexerError(e.clone())),
+        Some(Err(e)) => err!(e.clone(), ParserErrorPolicy::Undefined),
         None => Ok(None),
     }
 }
 
 pub fn expect(kind: TokenKind) -> ParseResult<Token> {
+    let lexer = FileSession::lexer();
     match next()? {
         Some(tok) if tok.kind == kind => Ok(tok),
         Some(tok) => {
-            err!(ParserErrorKind::ExpectedToken { found: tok.kind, expected: kind, span: tok.span })
+            err!(
+                miette! {
+                    severity = Severity::Error,
+                    code = "parser/token/unexpected",
+                    labels = vec![LabeledSpan::new(
+                        Some(format!("This token type is `{:?}`, but `{:?}` was expected", tok.kind, kind)),
+                        tok.span.start,
+                        tok.span.end - tok.span.start,
+                    )],
+                    "Unexpected token! `{:?}` was found, but `{:?}` was expected", tok.kind, kind
+                },
+                ParserErrorPolicy::Undefined
+            )
         }
-        None => err!(ParserErrorKind::UnexpectedEof),
+        None => err!(
+            miette! {
+                severity = Severity::Error,
+                code = "parser/token/unexpected/eof",
+                labels = vec![LabeledSpan::new(
+                    Some(format!("`{:?}` was expected", kind)),
+                    lexer.source().len(),
+                    0
+                )],
+                "Unexpected end of file! `{:?}` was expected", kind
+            },
+            ParserErrorPolicy::Undefined
+        ),
     }
 }
 
@@ -34,7 +61,7 @@ pub fn expect_opt<'src>(kind: TokenKind) -> ParseResultOpt<&'src Token> {
     match lexer.peek() {
         Some(Ok(tok)) if kind == tok.kind => Ok(Some(tok)),
         Some(Ok(_)) => Ok(None),
-        Some(Err(e)) => err!(ParserErrorKind::LexerError(e.clone())),
+        Some(Err(e)) => err!(e.clone(), ParserErrorPolicy::Undefined),
         None => Ok(None),
     }
 }
@@ -62,12 +89,20 @@ macro_rules! expect_choice {
     ($pat: pat) => {{
         let result: ParseResult<Token> = match $crate::util::next()? {
             Some(tok) if matches!(tok.kind, $pat) => Ok(tok),
-            Some(tok) => err!(ParserErrorKind::CustomError {
-                code: Some("parser::expected_token"),
-                msg: format!("unexpected token: expected {:?}, found {:?}", stringify!($pat), tok),
-                span: tok.span,
-            }),
-            None => err!(ParserErrorKind::UnexpectedEof),
+            Some(tok) => err!(
+                ::miette::miette! {
+                    "unexpected token: expected {:?}, found {:?}", stringify!($pat), tok
+                },
+                $crate::error::ParserErrorPolicy::Undefined
+            ),
+            None => {
+                err!(
+                    ::miette::miette! {
+                        "unexpected eof"
+                    },
+                    $crate::error::ParserErrorPolicy::Undefined
+                )
+            }
         };
         result
     }};
@@ -78,7 +113,7 @@ pub(crate) struct Checkpoint(osta_ast::builder::Checkpoint);
 impl Checkpoint {
     pub fn new() -> Self {
         FileSession::lexer().checkpoint();
-        let builder = FileSession::ast();
+        let builder = FileSession::builder();
         let checkpoint = builder.checkpoint();
         Self(checkpoint)
     }

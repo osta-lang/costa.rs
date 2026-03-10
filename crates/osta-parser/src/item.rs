@@ -1,8 +1,9 @@
-use crate::error::{ParserErrorKind, ParserIntent};
+use crate::error::{eof_label, ParserErrorPolicy};
 use crate::expr::{parse_block, parse_expr};
 use crate::path::{continue_path, create_path, parse_ident};
 use crate::util::{advance_if, expect, next, peek};
-use crate::{err, scoped_intent, try_parse, FileSession, ParseResult};
+use crate::{err, try_parse, FileSession, ParseResult};
+use miette::{miette, LabeledSpan, Severity};
 use osta_ast::ast::Ty;
 use osta_ast::NodeId;
 use osta_lexer::{Token, TokenKind};
@@ -13,9 +14,7 @@ pub fn parse_item<'src>() -> ParseResult<NodeId> {
 }
 
 pub fn parse_fn_decl<'src>() -> ParseResult {
-    scoped_intent!(ParserIntent::FuncDecl);
-
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     let start = expect(TokenKind::Fn)?.span.start;
     let ident = parse_ident()?;
@@ -38,7 +37,7 @@ pub fn parse_fn_decl<'src>() -> ParseResult {
 }
 
 pub fn parse_fn_decl_args() -> ParseResult {
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     let (this_id, this_span) = {
         let ident = parse_ident()?;
@@ -60,7 +59,7 @@ pub fn parse_fn_decl_args() -> ParseResult {
 }
 
 pub fn parse_type<'src>() -> ParseResult {
-    let builder = FileSession::ast();
+    let builder = FileSession::builder();
 
     let ty = match next()? {
         Some(Token { kind: TokenKind::Never, span }) => {
@@ -131,9 +130,31 @@ pub fn parse_type<'src>() -> ParseResult {
             (builder.add_type(span.clone(), Ty::Path(path)), span)
         }
         Some(Token { kind, span }) => {
-            return err!(ParserErrorKind::UnexpectedToken { found: kind, span });
+            return err!(
+                miette! {
+                    severity = Severity::Error,
+                    code = "parser/type/unexpected",
+                    labels = vec![LabeledSpan::new(
+                        Some("This token can't be used here".into()),
+                        span.start,
+                        span.end - span.start,
+                    )],
+                    "Unexpected token `{:?}` while parsing a type", kind
+                },
+                ParserErrorPolicy::Undefined
+            );
         }
-        None => return err!(ParserErrorKind::UnexpectedEof),
+        None => {
+            return err!(
+                miette! {
+                    severity = Severity::Error,
+                    code = "parser/type/eof",
+                    labels = vec![eof_label("An expression was expected here")],
+                    "Unexpected end of file while parsing type"
+                },
+                ParserErrorPolicy::Undefined
+            )
+        }
     };
 
     Ok(ty)

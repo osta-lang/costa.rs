@@ -4,7 +4,6 @@ version = "0.1.0"
 edition = "2024"
 
 [dependencies]
-osta-diagnostic.workspace = true
 osta-lexer.workspace = true
 osta-parser.workspace = true
 osta-session.workspace = true
@@ -15,13 +14,12 @@ miette = { workspace = true, features = ["fancy"] }
 clap = { version = "4.5.60", features = ["derive"] }
 
 [workspace]
-members = ["crates/osta-alloc", "crates/osta-ast", "crates/osta-diagnostic", "crates/osta-index", "crates/osta-lexer", "crates/osta-parser", "crates/osta-session", "crates/osta-syntax"]
+members = ["crates/osta-alloc", "crates/osta-ast", "crates/osta-index", "crates/osta-lexer", "crates/osta-parser", "crates/osta-session", "crates/osta-syntax"]
 resolver = "3"
 
 [workspace.dependencies]
 osta-alloc = { path = "crates/osta-alloc" }
 osta-ast = { path = "crates/osta-ast" }
-osta-diagnostic = { path = "crates/osta-diagnostic" }
 osta-index = { path = "crates/osta-index" }
 osta-lexer = { path = "crates/osta-lexer" }
 osta-parser = { path = "crates/osta-parser" }

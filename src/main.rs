@@ -1,6 +1,6 @@
 use clap::{Args, Parser, Subcommand, ValueEnum};
+use miette::NamedSource;
 use osta_ast::debug::AstPrinter;
-use osta_diagnostic::RequireSolvingAll;
 use osta_lexer::Lexer;
 use osta_parser::{parse, FileSession};
 use std::path::PathBuf;
@@ -34,51 +34,49 @@ enum NoBuildArtifact {
     AstDot,
 }
 
-fn main() -> miette::Result<()> {
+fn main() {
     let args = Cli::parse();
 
     match args.command {
         Command::NoBuild(NoBuildArgs { input_file, artifacts }) => {
             let source = std::fs::read_to_string(&input_file).unwrap();
             for artifact in artifacts {
-                match artifact {
-                    NoBuildArtifact::TokenStream => gen_token_stream(&source)?,
-                    NoBuildArtifact::AstDot => gen_ast_dot(&source)?,
+                let result = match artifact {
+                    NoBuildArtifact::TokenStream => gen_token_stream(&source),
+                    NoBuildArtifact::AstDot => gen_ast_dot(&source),
+                };
+
+                if let Err(e) = result {
+                    eprintln!(
+                        "{:?}",
+                        e.with_source_code(NamedSource::new(
+                            input_file.to_string_lossy(),
+                            source.clone()
+                        ))
+                    );
                 }
             }
         }
     }
-
-    Ok(())
 }
 
 fn gen_token_stream(source: &str) -> miette::Result<()> {
     let mut string_builder = String::new();
-    let mut errors = Vec::new();
     let lexer = Lexer::new(source);
     for entry in lexer {
         match entry {
             Ok(token) => {
                 string_builder = format!("{string_builder}{token:?}\n");
             }
-            Err(e) => {
-                string_builder = format!("{string_builder}{e:?}\n");
-                errors.push(e.into());
-            }
+            Err(e) => return Err(e.into()),
         }
     }
     println!("{string_builder}");
-    if errors.is_empty() {
-        Ok(())
-    } else {
-        Err(RequireSolvingAll::new(errors).into())
-    }
+    Ok(())
 }
 
 fn gen_ast_dot(source: &str) -> miette::Result<()> {
-    let FileSession { builder, interner, .. } = parse(source).map_err(|e| {
-        e.with_source_code(miette::NamedSource::new("example.osta", String::from(source)))
-    })?;
+    let FileSession { builder, interner, .. } = parse(source)?;
     let ast = builder.build();
 
     let printer = AstPrinter::new(&interner, source, &ast);

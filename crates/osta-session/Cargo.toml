@@ -5,7 +5,6 @@ edition = "2024"
 
 [dependencies]
 osta-alloc.workspace = true
-osta-diagnostic.workspace = true
 osta-index.workspace = true
 
 miette.workspace = true
